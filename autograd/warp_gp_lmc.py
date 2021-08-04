@@ -99,8 +99,6 @@ class TwoLayerWarpGPLMC:
 
         # Form required covariance matrices
         # LMC
-        covariance_obs = np.kron(self.kernel(X_warped, X_warped, kernel_params_obs_model), W.T @ W)
-        covariance_obs += noise_variance * np.eye(self.N * self.n_genes)
 
         # Warp log likelihood
         LL_warp = 0
@@ -124,7 +122,7 @@ class TwoLayerWarpGPLMC:
                 ]
             )
         
-        LL_obs = matrix_normal_logpdf(self.Y, np.zeros((self.N, self.n_genes)), self.kernel(X_warped, X_warped, kernel_params_obs_model) + 0.01 * np.eye(self.N), W.T @ W)
+        LL_obs = matrix_normal_logpdf(self.Y, np.zeros((self.N, self.n_genes)), self.kernel(X_warped, X_warped, kernel_params_obs_model) + noise_variance * np.eye(self.N), W.T @ W)
 
         return -LL_warp - LL_obs
 
@@ -219,7 +217,7 @@ if __name__ == "__main__":
     n_latent_dims = 2
     kernel = rbf_covariance
     kernel_params_true = np.array([1., 1.])
-    n_samples_per_view = 20
+    n_samples_per_view = 40
     n_samples_list = [n_samples_per_view] * n_views
     cumulative_sums = np.cumsum(n_samples_list)
     cumulative_sums = np.insert(cumulative_sums, 0, 0)
@@ -230,7 +228,7 @@ if __name__ == "__main__":
         ]
     )
     n = np.sum(n_samples_list)
-    sigma2 = 1
+    sigma2 = 0.1
     X_orig = np.hstack([np.random.uniform(low=-3, high=3, size=(n_samples_per_view, 1)) for _ in range(2)])
     W_orig = np.random.normal(size=(n_latent_dims, n_genes))
     F_orig = np.vstack(
@@ -239,7 +237,7 @@ if __name__ == "__main__":
             for _ in range(n_latent_dims)
         ]
     ).T
-    Y_orig = F_orig @ W_orig + np.random.normal(size=(n_samples_per_view, n_genes))
+    Y_orig = F_orig @ W_orig + np.random.normal(scale=np.sqrt(sigma2), size=(n_samples_per_view, n_genes))
 
 
     X = np.empty((np.sum(n_samples_list), 2))

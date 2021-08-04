@@ -1,6 +1,6 @@
 import sys
 sys.path.append("..")
-from warp_gp import TwoLayerWarpGP
+from warp_gp_pytorch import TwoLayerWarpGP
 import numpy as np
 from gp_functions import rbf_covariance
 from scipy.stats import multivariate_normal as mvnpy

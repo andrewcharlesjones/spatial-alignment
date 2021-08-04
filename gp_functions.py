@@ -8,7 +8,6 @@ def rbf_covariance(x, xp, kernel_params):
 	return output_scale * np.exp(-0.5 * np.sum(diffs**2, axis=2))
 
 def matrix_normal_logpdf(X, M, U, V):
-	# import ipdb; ipdb.set_trace()
 	n, p = X.shape
 	assert M.shape == (n, p)
 	assert U.shape == (n, n)

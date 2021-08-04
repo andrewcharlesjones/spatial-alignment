@@ -56,6 +56,8 @@ class TwoLayerWarpGP:
                 for ii in range(self.n_views)
             ]
         )
+        self.info_dict = {"n_iters_trained": 0}
+        self.print_every = 1 
 
     def unpack_params(self, params, n_kernel_params):
         noise_variance = np.exp(params[0]) + 0.001
@@ -69,6 +71,7 @@ class TwoLayerWarpGP:
         X_warped = np.reshape(
             params[n_kernel_params + self.n_spatial_dims ** 2 + 1 :], (self.N, 2)
         )
+        X_warped = np.concatenate([X_warped[self.view_idx[0], :], self.X[self.view_idx[1], :]])
         return X_warped, noise_variance, kernel_params, mean_params
 
     def gp_likelihood(self, params):
@@ -121,45 +124,48 @@ class TwoLayerWarpGP:
         return -LL_warp - LL_obs
 
     def summary(self, pars):
-        print("LL {0:1.3e}".format(-self.gp_likelihood(pars)))
+        self.info_dict["n_iters_trained"] += 1
+        curr_iter = self.info_dict["n_iters_trained"]
+        if curr_iter % self.print_every == 0:
+            print("Iter: {0:<10} LL {1:1.3e}".format(curr_iter, -self.gp_likelihood(pars)))
 
-        if self.plot_updates:
-            X_warped, noise_variance, kernel_params, mean_params = self.unpack_params(
-                pars, self.n_kernel_params
-            )
-
-            self.data_ax.cla()
-            self.aligned_ax.cla()
-            markers = [".", "+", "^"]
-
-            for vv in range(self.n_to_plot):
-                self.data_ax.scatter(
-                    self.X[self.view_idx[vv], 0],
-                    self.X[self.view_idx[vv], 1],
-                    c=self.Y[self.view_idx[vv], 0],
-                    label="View {}".format(vv + 1),
-                    marker=markers[vv],
-                    s=100,
-                )
-                self.aligned_ax.scatter(
-                    X_warped[self.view_idx[vv], 0],
-                    X_warped[self.view_idx[vv], 1],
-                    c=self.Y[self.view_idx[vv], 0],
-                    label="View {}".format(vv + 1),
-                    marker=markers[vv],
-                    s=100,
+            if self.plot_updates:
+                X_warped, noise_variance, kernel_params, mean_params = self.unpack_params(
+                    pars, self.n_kernel_params
                 )
 
-            self.data_ax.legend(loc="upper left")
-            self.aligned_ax.legend(loc="upper left")
-            self.data_ax.set_xlabel("Spatial dim 1")
-            self.data_ax.set_ylabel("Spatial dim 2")
-            self.aligned_ax.set_xlabel("Spatial dim 1")
-            self.aligned_ax.set_ylabel("Spatial dim 2")
-            plt.draw()
-            plt.pause(1.0 / 60.0)
+                self.data_ax.cla()
+                self.aligned_ax.cla()
+                markers = [".", "+", "^"]
 
-    def fit(self, plot_updates=False):
+                for vv in range(self.n_to_plot):
+                    self.data_ax.scatter(
+                        self.X[self.view_idx[vv], 0],
+                        self.X[self.view_idx[vv], 1],
+                        c=self.Y[self.view_idx[vv], 0],
+                        label="View {}".format(vv + 1),
+                        marker=markers[vv],
+                        s=100,
+                    )
+                    self.aligned_ax.scatter(
+                        X_warped[self.view_idx[vv], 0],
+                        X_warped[self.view_idx[vv], 1],
+                        c=self.Y[self.view_idx[vv], 0],
+                        label="View {}".format(vv + 1),
+                        marker=markers[vv],
+                        s=100,
+                    )
+
+                self.data_ax.legend(loc="upper left")
+                self.aligned_ax.legend(loc="upper left")
+                self.data_ax.set_xlabel("Spatial dim 1")
+                self.data_ax.set_ylabel("Spatial dim 2")
+                self.aligned_ax.set_xlabel("Spatial dim 1")
+                self.aligned_ax.set_ylabel("Spatial dim 2")
+                plt.draw()
+                plt.pause(1.0 / 60.0)
+
+    def fit(self, n_iters=None, plot_updates=False, verbose=True, print_every=1):
         param_init = np.concatenate(
             [
                 np.random.normal(size=self.n_noise_variance_params),  # Noise variance
@@ -182,25 +188,36 @@ class TwoLayerWarpGP:
 
             # Plot alignment based on initial params
             self.summary(param_init)
+        self.info_dict["n_iters_trained"] = 0
+        self.print_every = print_every
         res = minimize(
             value_and_grad(self.gp_likelihood),
             param_init,
             jac=True,
             method="CG",
             callback=self.summary,
+            options={"maxiter": n_iters},
         )
+        plt.close()
         X_warped, noise_variance, kernel_params, mean_params = self.unpack_params(
             res.x, self.n_kernel_params
         )
+        results_dict = {
+            "X_warped": X_warped,
+            "noise_variance": noise_variance,
+            "kernel_params": kernel_params,
+            "mean_params": mean_params
+        }
+        return results_dict
 
 
 if __name__ == "__main__":
 
-    n_views = 3
+    n_views = 2
     n_genes = 10
     kernel = rbf_covariance
     kernel_params_true = np.array([1.0, 1.0])
-    n_samples_per_view = 30
+    n_samples_per_view = 100
     n_samples_list = [n_samples_per_view] * n_views
     cumulative_sums = np.cumsum(n_samples_list)
     cumulative_sums = np.insert(cumulative_sums, 0, 0)
@@ -227,14 +244,22 @@ if __name__ == "__main__":
 
 	    curr_X = X_orig.copy()
 	    # Warp
-	    linear_coeffs = np.random.normal(scale=0.1, size=2 * 2)
+	    linear_coeffs = np.random.normal(scale=0.25, size=2 * 2)
 	    rs_true, thetas_true = curr_X @ linear_coeffs[:2], curr_X @ linear_coeffs[2:]
 
 	    curr_X_observed = polar_warp(curr_X, rs_true, thetas_true)
 	    X[view_idx[vv]] = curr_X_observed
 	    
 	    curr_Y = Y_orig.copy()
-	    Y[view_idx[vv]] = curr_Y
+	    Y[view_idx[vv]] = curr_Y# + np.random.normal(scale=0.1, size=curr_Y.shape)
+
+
+    # X_cov = np.cov(X)
+    # sns.heatmap(X_cov)
+    # plt.show()
+    
+    # import ipdb
+    # ipdb.set_trace()
 
     warp_gp = TwoLayerWarpGP(
         X, Y, n_views=n_views, n_samples_list=n_samples_list, kernel=rbf_covariance

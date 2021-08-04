@@ -53,11 +53,14 @@ if __name__ == "__main__":
 	data2_idx = np.random.choice(np.arange(n), size=n2, replace=False)
 	view_idx = np.array([np.arange(0, n1), np.arange(n1, n1 + n2)])
 
-	X1 = X_orig#[data1_idx, :]
-	X2 = X_orig#[data2_idx, :]
-
-	Y1 = Y_orig#[data1_idx, :]
-	Y2 = Y_orig#[data2_idx, :]
+	X1 = X_orig
+	X2 = X_orig
+	Y1 = Y_orig
+	Y2 = Y_orig
+	# X1 = X_orig[data1_idx, :]
+	# X2 = X_orig[data2_idx, :]
+	# Y1 = Y_orig[data1_idx, :]
+	# Y2 = Y_orig[data2_idx, :]
 	Y = np.concatenate([Y1, Y2], axis=0)
 
 
@@ -73,7 +76,7 @@ if __name__ == "__main__":
 	warp_gp = TwoLayerWarpGP(
 		X, Y, n_views=n_views, n_samples_list=[n1, n2], kernel=rbf_covariance
 	)
-	warp_gp.fit(plot_updates=True)
+	warp_gp.fit(plot_updates=True, print_every=10)
 
 
 	import ipdb; ipdb.set_trace()
