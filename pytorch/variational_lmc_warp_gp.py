@@ -14,17 +14,8 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 print("Using {} device".format(device))
 
 
-def rbf_kernel(x1, x2, lengthscale_unconstrained, output_variance_unconstrained):
-
-    lengthscale = torch.exp(lengthscale_unconstrained)
-    output_variance = torch.exp(output_variance_unconstrained)
-
-    diffs = x1.unsqueeze(1) / lengthscale - x2.unsqueeze(0) / lengthscale
-    return output_variance * torch.exp(-0.5 * torch.sum(torch.square(diffs), dim=2))
-
-
 # Define model
-class VariationalWarpGP(WarpGP):
+class VariationalLMCWarpGP(WarpGP):
     # def __init__(self, X, view_idx, n, n_spatial_dims, m_X_per_view, m_G):
     def __init__(
         self,
@@ -33,12 +24,12 @@ class VariationalWarpGP(WarpGP):
         m_G,
         data_init=True,
         minmax_init=False,
-        grid_init=False,
         n_spatial_dims=2,
         n_noise_variance_params=1,
         kernel_func=gp.kernels.RBF,
+        n_latent_gps=1,
     ):
-        super(VariationalWarpGP, self).__init__(
+        super(VariationalLMCWarpGP, self).__init__(
             data_dict,
             data_init=True,
             n_spatial_dims=2,
@@ -48,6 +39,7 @@ class VariationalWarpGP(WarpGP):
 
         self.m_X_per_view = m_X_per_view
         self.m_G = m_G
+        self.n_latent_gps = n_latent_gps
 
         if data_init:
             # Initialize inducing locations with a subset of the data
@@ -69,7 +61,6 @@ class VariationalWarpGP(WarpGP):
                 Xtilde[ii, :, :] = curr_X_spatial[rand_idx]
             # self.Xtilde = nn.Parameter(Xtilde)
             self.Xtilde = Xtilde.clone()
-            self.Gtilde = nn.Parameter(torch.randn([self.m_G, self.n_spatial_dims]))
         elif minmax_init:
 
             Xtilde = torch.zeros([self.n_views, self.m_X_per_view, self.n_spatial_dims])
@@ -89,44 +80,12 @@ class VariationalWarpGP(WarpGP):
                 )
                 Xtilde[ii, :, 0] = curr_inducing_locs
                 self.Xtilde = Xtilde.clone()
-                self.Gtilde = nn.Parameter(torch.randn([self.m_G, self.n_spatial_dims]))
-        elif grid_init:
-
-            if self.n_spatial_dims == 2:
-                xlimits = [-10, 10]
-                ylimits = [-10, 10]
-                numticks = 5
-                x1s = np.linspace(*xlimits, num=numticks)
-                x2s = np.linspace(*ylimits, num=numticks)
-                X1, X2 = np.meshgrid(x1s, x2s)
-                Xtilde = np.vstack([X1.ravel(), X2.ravel()]).T
-                Xtilde_torch = torch.zeros(
-                    [self.n_views, Xtilde.shape[0], self.n_spatial_dims]
-                )
-                for vv in range(self.n_views):
-                    Xtilde_torch[vv] = torch.tensor(Xtilde)
-
-                self.Xtilde = Xtilde_torch.clone()
-                self.Gtilde = torch.tensor(Xtilde).float()
-            elif self.n_spatial_dims == 1:
-                Xtilde = np.expand_dims(
-                    torch.tensor(np.linspace(-10, 10, self.m_X_per_view)), 1
-                )
-                Xtilde_full = np.zeros(
-                    [self.n_views, Xtilde.shape[0], self.n_spatial_dims]
-                )
-                for vv in range(self.n_views):
-                    Xtilde_full[vv] = Xtilde
-                self.Xtilde = torch.tensor(Xtilde_full).float()
-                Gtilde = np.expand_dims(torch.tensor(np.linspace(-10, 10, self.m_G)), 1)
-                self.Gtilde = torch.tensor(Gtilde).float()
-                # import ipdb; ipdb.set_trace()
         else:
             # Random initialization of inducing locations
             self.Xtilde = nn.Parameter(
                 torch.randn([self.n_views, self.m_X_per_view, self.n_spatial_dims])
             )
-            self.Gtilde = nn.Parameter(torch.randn([self.m_G, self.n_spatial_dims]))
+        self.Gtilde = nn.Parameter(torch.randn([self.m_G, self.n_spatial_dims]))
         Omega_sqt_G_list = torch.zeros(
             [self.n_views, self.n_spatial_dims, self.m_X_per_view, self.m_X_per_view]
         )
@@ -138,7 +97,7 @@ class VariationalWarpGP(WarpGP):
 
         Omega_sqt_F_dict = torch.nn.ParameterDict()
         for mod in self.modality_names:
-            num_outputs = self.Ps[mod]
+            num_outputs = self.n_latent_gps
             curr_Omega = torch.zeros([num_outputs, m_G, m_G])
             for jj in range(num_outputs):
                 Omega_sqt = 0.01 * torch.randn(size=[m_G, m_G])
@@ -154,28 +113,26 @@ class VariationalWarpGP(WarpGP):
 
         delta_F_dict = torch.nn.ParameterDict()
         for mod in self.modality_names:
-            num_outputs = self.Ps[mod]
+            num_outputs = self.n_latent_gps
             curr_delta = nn.Parameter(0.1 * torch.randn(size=[m_G, num_outputs]))
             delta_F_dict[mod] = curr_delta
         self.delta_F_dict = delta_F_dict
 
-        self.kernel_G = gp.kernels.RBF(
-            input_dim=self.n_spatial_dims,
-        )
-        self.kernel_F = gp.kernels.RBF(
-            input_dim=self.n_spatial_dims,
-        )
+        self.W_dict = torch.nn.ParameterDict()
+        for mod in self.modality_names:
+            self.W_dict[mod] = nn.Parameter(
+                torch.randn([self.n_latent_gps, self.Ps[mod]])
+            )
 
     def forward(self, X_spatial, S=1):
         self.noise_variance_pos = torch.exp(self.noise_variance) + 1e-4
         kernel_variances_pos = torch.exp(self.kernel_variances)
         kernel_lengthscales_pos = torch.exp(self.kernel_lengthscales)
-        # print(self.kernel_lengthscales)
-        # self.kernel_G = gp.kernels.RBF(
-        #     input_dim=1,
-        #     variance=kernel_variances_pos[0],
-        #     lengthscale=kernel_lengthscales_pos[0],
-        # )
+        self.kernel_G = gp.kernels.RBF(
+            input_dim=1,
+            variance=kernel_variances_pos[0],
+            lengthscale=kernel_lengthscales_pos[0],
+        )
         # n_total = X_spatial.shape[0]
 
         self.mu_z_G = torch.zeros(
@@ -201,13 +158,6 @@ class VariationalWarpGP(WarpGP):
         for mod in self.modality_names:
             self.G_means[mod] = torch.zeros([self.Ns[mod], self.n_spatial_dims])
         for ii in range(self.n_views):
-
-            kernel_G = lambda x1, x2: rbf_kernel(
-                x1,
-                x2,
-                lengthscale_unconstrained=self.kernel_lengthscales[ii],
-                output_variance_unconstrained=self.kernel_variances[ii],
-            )
 
             ## Collect data from all modalities for this view
             curr_X_spatial_list = []
@@ -243,18 +193,16 @@ class VariationalWarpGP(WarpGP):
                 ## Sample G from p(G | X, Xtilde)
                 ## 		- Note that this is the distribution with
                 ## 		  the pseudo-outputs marginalized out
-                # Kff_diag = (
-                #     kernel_G(curr_X_spatial, curr_X_spatial, diag=True)
-                #     + self.diagonal_offset
-                # )
-                Kff = kernel_G(curr_X_spatial, curr_X_spatial)
-                Kff_diag = torch.diagonal(Kff) + self.diagonal_offset
-                Kuu = kernel_G(
+                Kff_diag = (
+                    self.kernel_G(curr_X_spatial, curr_X_spatial, diag=True)
+                    + self.diagonal_offset
+                )
+                Kuu = self.kernel_G(
                     curr_X_tilde, curr_X_tilde
                 ) + self.diagonal_offset * torch.eye(self.m_X_per_view)
                 Kuu_chol = torch.cholesky(Kuu)
                 self.Kuu_chol_list[ii, jj, :, :] = Kuu_chol
-                Kuf = kernel_G(curr_X_tilde, curr_X_spatial)
+                Kuf = self.kernel_G(curr_X_tilde, curr_X_spatial)
 
                 # TODO: make these true mean functions (linear or something)
                 # mu_x = torch.zeros(curr_X_spatial.shape[0])
@@ -289,40 +237,40 @@ class VariationalWarpGP(WarpGP):
         ## Sample F from p(F | G, Gtilde)
         # self.mu_z_F = torch.zeros([self.Gtilde.shape]) # torch.matmul(self.Gtilde, self.mean_slopes) + self.mean_intercepts
 
-        # self.kernel_F = gp.kernels.RBF(
-        #     input_dim=self.n_spatial_dims,
-        #     variance=kernel_variances_pos[-1],
-        #     lengthscale=kernel_lengthscales_pos[-1],
-        # )
+        self.kernel_F = gp.kernels.RBF(
+            input_dim=self.n_spatial_dims,
+            variance=kernel_variances_pos[-1],
+            lengthscale=kernel_lengthscales_pos[-1],
+        )
 
         self.curr_Omega_tril_F = {}
         for mod in self.modality_names:
             self.curr_Omega_tril_F[mod] = torch.zeros(
-                [self.Ps[mod], self.m_G, self.m_G]
+                [self.n_latent_gps, self.m_G, self.m_G]
             )
-        # torch.zeros(
-        #     [n_genes, self.m_G, self.m_G]
-        # )
-        F_samples = {}
+        latent_F_samples = {}
         for mod in self.modality_names:
-            F_samples[mod] = torch.zeros([S, self.Ns[mod], self.Ps[mod]])
+            latent_F_samples[mod] = torch.zeros([S, self.Ns[mod], self.n_latent_gps])
+        observed_F_samples = {}
+        for mod in self.modality_names:
+            observed_F_samples[mod] = torch.zeros([S, self.Ns[mod], self.Ps[mod]])
 
         for ss in range(S):
             for mod in self.modality_names:
                 curr_G = G_samples[mod][ss, :, :].clone()
 
-                self.mu_x_F = torch.zeros([self.Ns[mod], self.Ps[mod]])
-                self.mu_z_F = torch.zeros([self.m_G, self.Ps[mod]])
+                self.mu_x_F = torch.zeros([self.Ns[mod], self.n_latent_gps])
+                self.mu_z_F = torch.zeros([self.m_G, self.n_latent_gps])
 
-                Kff_diag = self.kernel_G(curr_G, diag=True) + self.diagonal_offset
+                Kff_diag = self.kernel_F(curr_G, diag=True) + self.diagonal_offset
 
-                Kuu = self.kernel_G(
+                Kuu = self.kernel_F(
                     self.Gtilde, self.Gtilde
                 ) + self.diagonal_offset * torch.eye(self.m_G)
                 self.Kuu_chol = torch.cholesky(Kuu)
-                Kuf = self.kernel_G(self.Gtilde, curr_G)
+                Kuf = self.kernel_F(self.Gtilde, curr_G)
 
-                for jj in range(self.Ps[mod]):
+                for jj in range(self.n_latent_gps):
                     curr_Omega_sqt = self.Omega_sqt_F_dict[mod][jj, :, :].clone()
                     curr_Omega = torch.matmul(
                         curr_Omega_sqt, curr_Omega_sqt.t()
@@ -354,10 +302,21 @@ class VariationalWarpGP(WarpGP):
                     F_marginal_dist = torch.distributions.MultivariateNormal(
                         loc=mu_tilde, covariance_matrix=torch.diag(Sigma_tilde)
                     )
-                    F_samples[mod][:, :, jj] = F_marginal_dist.rsample(sample_shape=[1])
-        return G_samples, F_samples
+                    curr_latent_F_samples = F_marginal_dist.rsample(sample_shape=[1])
+                    latent_F_samples[mod][:, :, jj] = curr_latent_F_samples
 
-    def loss_fn(self, data_dict, F_samples):
+                    observed_F_mean = torch.matmul(
+                        curr_latent_F_samples.t(), self.W_dict[mod]
+                    )
+                    F_observed_dist = torch.distributions.Normal(
+                        observed_F_mean, self.noise_variance_pos
+                    )
+                    observed_F_samples[mod][:, :, :] = F_observed_dist.rsample([1])
+                    # import ipdb; ipdb.set_trace()
+
+        return G_samples, latent_F_samples, observed_F_samples, mu_tilde
+
+    def loss_fn(self, data_dict, observed_F_samples):
         # This is the negative (approximate) ELBO
 
         # KL terms
@@ -379,7 +338,7 @@ class VariationalWarpGP(WarpGP):
         ## F
         LL = 0
         for mod in self.modality_names:
-            for jj in range(self.Ps[mod]):
+            for jj in range(self.n_latent_gps):
                 qu = torch.distributions.MultivariateNormal(
                     loc=self.delta_F_dict[mod][:, jj],
                     scale_tril=self.curr_Omega_tril_F[mod][jj, :, :],
@@ -387,11 +346,15 @@ class VariationalWarpGP(WarpGP):
                 pu = torch.distributions.MultivariateNormal(
                     loc=self.mu_z_F[:, jj], scale_tril=self.Kuu_chol
                 )
-                KL_div += torch.distributions.kl.kl_divergence(qu, pu) / self.Ps[mod]
+                KL_div += (
+                    torch.distributions.kl.kl_divergence(qu, pu) / self.n_latent_gps
+                )
 
+            for jj in range(self.Ps[mod]):
                 # Log likelihood
+                # import ipdb; ipdb.set_trace()
                 Y_distribution = torch.distributions.Normal(
-                    loc=F_samples[mod][:, :, jj], scale=self.noise_variance_pos
+                    loc=observed_F_samples[mod][:, :, jj], scale=self.noise_variance_pos
                 )
                 LL += Y_distribution.log_prob(data_dict[mod]["outputs"][:, jj])
 

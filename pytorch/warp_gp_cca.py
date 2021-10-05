@@ -22,7 +22,6 @@ class TwoLayerWarpGP(WarpGP):
         n_noise_variance_params=1,
         kernel_func=gp.kernels.RBF,
         distance_penalty_param=0.0,
-        mean_penalty_param=1.0,
     ):
         super(TwoLayerWarpGP, self).__init__(
             data_dict,
@@ -30,7 +29,6 @@ class TwoLayerWarpGP(WarpGP):
             n_spatial_dims=2,
             n_noise_variance_params=1,
             kernel_func=gp.kernels.RBF,
-            mean_penalty_param=mean_penalty_param,
         )
         self.modality_names = list(data_dict.keys())
         self.n_modalities = len(self.modality_names)
@@ -52,35 +50,32 @@ class TwoLayerWarpGP(WarpGP):
         ###############################################
         ##### Compute means and covariances for G #####
         ###############################################
-        means_G_list = []
-        covs_G_list = []
+        means_X_list = []
+        covs_X_list = []
         for vv in range(self.n_views):
-            curr_X_spatial_list = []
+            curr_G_list = []
             curr_n = 0
             for mod in self.modality_names:
                 curr_idx = self.view_idx[mod][vv]
                 curr_n += len(curr_idx)
-                curr_modality_and_view_spatial = X_spatial[mod][curr_idx, :]
-                curr_X_spatial_list.append(curr_modality_and_view_spatial)
-            curr_X_spatial = torch.cat(curr_X_spatial_list, dim=0)
+                curr_modality_and_view_spatial = self.Gs[mod][curr_idx, :]
+                curr_G_list.append(curr_modality_and_view_spatial)
+            curr_G = torch.cat(curr_G_list, dim=0)
 
             ## Make mean
-            mean_G = (
-                torch.matmul(curr_X_spatial, self.mean_slopes[vv])
-                + self.mean_intercepts[vv]
+            mean_X = (
+                torch.matmul(curr_G, self.mean_slopes[vv]) + self.mean_intercepts[vv]
             )
-            means_G_list.append(mean_G)
+            means_X_list.append(mean_X)
 
             ## Make covariance
-            kernel_G = self.kernel_func(
+            kernel_X = self.kernel_func(
                 input_dim=self.n_spatial_dims,
                 variance=kernel_variances_pos[vv],
                 lengthscale=kernel_lengthscales_pos[vv],
             )
-            cov_G = kernel_G(
-                curr_X_spatial, curr_X_spatial
-            ) + self.diagonal_offset * torch.eye(curr_n)
-            covs_G_list.append(cov_G)
+            cov_X = kernel_X(curr_G, curr_G) + self.diagonal_offset * torch.eye(curr_n)
+            covs_X_list.append(cov_X)
 
         ###############################################
         ##### Compute means and covariances for Y #####
@@ -104,30 +99,31 @@ class TwoLayerWarpGP(WarpGP):
             ) + noise_variance_pos * torch.eye(self.Ns[mod])
             covs_Y[mod] = cov_Y
 
-        return self.Gs, means_G_list, covs_G_list, means_Y, covs_Y
+        return self.Gs, means_X_list, covs_X_list, means_Y, covs_Y
 
-    def loss_fn(self, data_dict, Gs, means_G_list, covs_G_list, means_Y, covs_Y):
+    def loss_fn(self, data_dict, Gs, means_X_list, covs_X_list, means_Y, covs_Y):
         # Log likelihood of G given X (warp likelihood)
-        LL_G = 0
+        LL_X = 0
         for vv in range(self.n_views):
             curr_view_idxs = np.array(
                 [self.view_idx[mod][vv] for mod in self.modality_names]
             )
-            curr_G = torch.cat(
+            curr_X = torch.cat(
                 [
-                    Gs[mod][curr_view_idxs[ii]]
+                    data_dict[mod]["spatial_coords"][curr_view_idxs[ii]]
                     for ii, mod in enumerate(self.modality_names)
                 ]
             )
 
-            curr_mean_G = means_G_list[vv]
-            curr_cov_G = covs_G_list[vv]
-            LL_G += torch.sum(
+            curr_mean_X = means_X_list[vv]
+            curr_cov_X = covs_X_list[vv]
+
+            LL_X += torch.sum(
                 torch.stack(
                     [
                         torch.distributions.MultivariateNormal(
-                            loc=curr_mean_G[:, dd], covariance_matrix=curr_cov_G
-                        ).log_prob(curr_G[:, dd])
+                            loc=curr_mean_X[:, dd], covariance_matrix=curr_cov_X
+                        ).log_prob(curr_X[:, dd])
                         for dd in range(self.n_spatial_dims)
                     ]
                 )
@@ -191,15 +187,12 @@ class TwoLayerWarpGP(WarpGP):
                     )
                     distance_penalty += curr_penalty
 
-        mean_penalty = 1 * torch.mean(
-            torch.square(
-                self.mean_slopes
-                - torch.eye(self.n_spatial_dims).unsqueeze(0).repeat(self.n_views, 1, 1)
-            )
-        )
         return (
-            -LL_G - LL_Y + self.distance_penalty_param * distance_penalty + mean_penalty
-        )  # - variance_penalty
+            -LL_X
+            - LL_Y
+            + self.distance_penalty_param * distance_penalty
+            - variance_penalty
+        )
 
 
 def distance_matrix(X, Y):

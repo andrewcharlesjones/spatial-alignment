@@ -1,2 +1,9 @@
 data/
 __pycache__
+*.png
+*.pdf
+*.pkl
+*.svg
+plots/
+old/
+.DS_Store

@@ -18,12 +18,14 @@ class WarpGP(nn.Module):
         data_dict,
         data_init=True,
         n_spatial_dims=2,
-        n_noise_variance_params=1,
+        n_noise_variance_params=2,
         kernel_func=gp.kernels.RBF,
+        mean_penalty_param=0.,
     ):
         super(WarpGP, self).__init__()
         self.modality_names = list(data_dict.keys())
         self.n_modalities = len(self.modality_names)
+        self.mean_penalty_param = mean_penalty_param
 
         ## Make sure all modalities have the same number of "views"
         n_views = np.unique(
@@ -53,11 +55,13 @@ class WarpGP(nn.Module):
         self.Ps = {}
         self.n_samples_lists = {}
         self.view_idx = {}
+        self.n_total = 0
         for mod in self.modality_names:
             n_samples_list = data_dict[mod]["n_samples_list"]
             self.n_samples_lists[mod] = n_samples_list
             curr_N = np.sum(n_samples_list)
             self.Ns[mod] = curr_N
+            self.n_total += curr_N
             self.Ps[mod] = data_dict[mod]["outputs"].shape[1]
 
             # Compute the indices of each view for each modality
@@ -82,30 +86,42 @@ class WarpGP(nn.Module):
 
         # self.G_param = nn.Parameter(G_init[self.view_idx[0], :])
         self.noise_variance = nn.Parameter(torch.randn([self.n_noise_variance_params]))
-        self.kernel_variances = nn.Parameter(torch.randn([self.n_kernel_params // 2]))
+        self.kernel_variances = nn.Parameter(torch.randn([self.n_kernel_params // 2]) - 5)
         self.kernel_lengthscales = nn.Parameter(
             torch.randn([self.n_kernel_params // 2])
         )
+
         self.mean_slopes = nn.Parameter(
-            torch.randn([self.n_views, self.n_spatial_dims, self.n_spatial_dims])
+            torch.eye(self.n_spatial_dims).unsqueeze(0).repeat(self.n_views, 1, 1)
         )
+        # self.mean_slopes = nn.Parameter(
+        #     torch.randn([self.n_views, self.n_spatial_dims, self.n_spatial_dims])
+        # )
         self.mean_intercepts = nn.Parameter(
-            torch.randn([self.n_views, self.n_spatial_dims])
+            torch.randn([self.n_views, self.n_spatial_dims]) * 0.1
         )
-        self.diagonal_offset = 1e-3
+        # self.mean_intercepts = torch.zeros([self.n_views, self.n_spatial_dims])
+        self.diagonal_offset = 1e-5
+
+    def compute_mean_penalty(self):
+        return self.mean_penalty_param * torch.mean(
+            torch.square(
+                self.mean_slopes
+                - torch.eye(self.n_spatial_dims).unsqueeze(0).repeat(self.n_views, 1, 1)
+            )
+        )
 
     def forward(self, X_spatial):
-        raise(NotImplementedError)
+        raise (NotImplementedError)
 
     def loss_fn(self, data_dict, Gs, means_G_list, covs_G_list, means_Y, covs_Y):
-        raise(NotImplementedError)
+        raise (NotImplementedError)
 
 
 def distance_matrix(X, Y):
     squared_diffs = torch.square(torch.unsqueeze(X, 0) - torch.unsqueeze(Y, 1))
     squared_distances = torch.sum(squared_diffs, dim=2)
     return squared_distances
-
 
 
 if __name__ == "__main__":

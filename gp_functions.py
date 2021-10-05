@@ -24,7 +24,6 @@ def matrix_normal_logpdf(X, M, U, V):
 	V_logdet = np.linalg.slogdet(V)[1]
 
 	normalizer = -0.5 * n * p * np.log(2 * np.pi) - 0.5 * n * V_logdet - 0.5 * p * U_logdet
-	# import ipdb; ipdb.set_trace()
 	exponand  = -0.5 * np.trace(V_inv @ X_centered.T @ U_inv @ X_centered)
 
 	
