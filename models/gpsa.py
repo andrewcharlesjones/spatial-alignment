@@ -1,11 +1,15 @@
 import torch
-import pyro.contrib.gp as gp
 import numpy as np
 import matplotlib.pyplot as plt
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 import seaborn as sns
 from scipy.stats import multivariate_normal as mvnpy
+
+import sys
+
+sys.path.append("..")
+from util import rbf_kernel
 
 
 # device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -19,11 +23,13 @@ class WarpGP(nn.Module):
         data_init=True,
         n_spatial_dims=2,
         n_noise_variance_params=2,
-        kernel_func=gp.kernels.RBF,
+        kernel_func_warp=rbf_kernel,
+        kernel_func_data=rbf_kernel,
         mean_function="identity_fixed",
-        mean_penalty_param=0.,
+        mean_penalty_param=0.0,
         fixed_warp_kernel_variances=None,
         fixed_warp_kernel_lengthscales=None,
+        fixed_data_kernel_lengthscales=None,
     ):
         super(WarpGP, self).__init__()
         self.modality_names = list(data_dict.keys())
@@ -54,12 +60,7 @@ class WarpGP(nn.Module):
                 "Each modality must have the same number of spatial dimensions."
             )
         self.n_spatial_dims = n_spatial_dims[0]
-        # self.Ns = {}
-        # self.Ps = {}
-        # self.n_samples_lists = {}
-        # self.view_idx = {}
-        # self.n_total = 0
-        
+
         view_idx, Ns, Ps, n_total = self.create_view_idx_dict(data_dict)
         self.view_idx = view_idx
         self.Ns = Ns
@@ -72,33 +73,52 @@ class WarpGP(nn.Module):
         ##		- 2 parameters for observation GP (lengthscale and variance)
         self.n_kernel_params = 2 * self.n_views + 2
         self.n_noise_variance_params = n_noise_variance_params
-        self.kernel_func = kernel_func
+        self.kernel_func_warp = kernel_func_warp
+        self.kernel_func_data = kernel_func_data
 
         ## Parameters
-
-        # self.G_param = nn.Parameter(G_init[self.view_idx[0], :])
-        self.noise_variance = nn.Parameter(torch.randn([self.n_noise_variance_params]))
+        self.noise_variance = nn.Parameter(
+            torch.randn([self.n_noise_variance_params]) - 1
+        )
+        # self.noise_variance = torch.log(torch.ones(2) * 0.001)
 
         if fixed_warp_kernel_variances is None:
-            self.warp_kernel_variances = nn.Parameter(torch.randn([self.n_kernel_params // 2 - 1]))
+            # self.warp_kernel_variances = nn.Parameter(
+            #     torch.randn([self.n_kernel_params // 2 - 1]) - 1
+            # )
+            self.warp_kernel_variances = nn.Parameter(torch.zeros(self.n_kernel_params // 2 - 1))
         else:
-            self.warp_kernel_variances = torch.log(torch.tensor(fixed_warp_kernel_variances))
+            self.warp_kernel_variances = torch.log(
+                torch.tensor(fixed_warp_kernel_variances)
+            )
 
         if fixed_warp_kernel_lengthscales is None:
-            self.warp_kernel_lengthscales = nn.Parameter(
-                torch.randn([self.n_kernel_params // 2 - 1])
+            # self.warp_kernel_lengthscales = nn.Parameter(
+            #     torch.randn([self.n_kernel_params // 2 - 1]) + 3
+            # )
+            self.warp_kernel_lengthscales = nn.Parameter(torch.zeros(self.n_kernel_params // 2 - 1) + np.log(10))
+        else:
+            self.warp_kernel_lengthscales = torch.log(
+                torch.tensor(fixed_warp_kernel_lengthscales)
+            )
+
+        if fixed_data_kernel_lengthscales is None:
+            self.data_kernel_lengthscale = nn.Parameter(
+                torch.log(torch.exp(torch.randn(1)))
             )
         else:
-            self.warp_kernel_lengthscales = torch.log(torch.tensor(fixed_warp_kernel_lengthscales))
+            self.data_kernel_lengthscale = torch.log(
+                torch.tensor(fixed_data_kernel_lengthscales).float()
+            )
 
         self.data_kernel_variance = nn.Parameter(torch.randn(1))
-        self.data_kernel_lengthscale = nn.Parameter(torch.randn(1))
-        # self.data_kernel_variance = torch.tensor(1)
-        # self.data_kernel_lengthscale = torch.tensor(1)
-    
-        
+        # self.data_kernel_variance = nn.Parameter(torch.zeros(1))
+        # self.data_kernel_variance = torch.tensor(0.).float()
+
         if mean_function == "identity_fixed":
-            self.mean_slopes = torch.eye(self.n_spatial_dims).unsqueeze(0).repeat(self.n_views, 1, 1)
+            self.mean_slopes = (
+                torch.eye(self.n_spatial_dims).unsqueeze(0).repeat(self.n_views, 1, 1)
+            )
             self.mean_intercepts = torch.zeros([self.n_views, self.n_spatial_dims])
         elif mean_function == "identity_initialized":
             self.mean_slopes = nn.Parameter(
@@ -114,7 +134,7 @@ class WarpGP(nn.Module):
             self.mean_intercepts = nn.Parameter(
                 torch.randn([self.n_views, self.n_spatial_dims]) * 0.1
             )
-        
+
         # self.mean_intercepts = torch.zeros([self.n_views, self.n_spatial_dims])
         self.diagonal_offset = 1e-5
 
@@ -134,12 +154,10 @@ class WarpGP(nn.Module):
             cumulative_sums = np.cumsum(n_samples_list)
             cumulative_sums = np.insert(cumulative_sums, 0, 0)
             curr_view_idx = [
-                    np.arange(cumulative_sums[ii], cumulative_sums[ii + 1])
-                    for ii in range(self.n_views)
-                ]
-            # import ipdb; ipdb.set_trace()
+                np.arange(cumulative_sums[ii], cumulative_sums[ii + 1])
+                for ii in range(self.n_views)
+            ]
             view_idx[mod] = curr_view_idx
-            # import ipdb; ipdb.set_trace()
 
         return view_idx, Ns, Ps, n_total
 

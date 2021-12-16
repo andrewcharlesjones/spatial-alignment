@@ -95,8 +95,12 @@ class VariationalWarpGP(WarpGP):
         elif grid_init:
 
             if self.n_spatial_dims == 2:
-                xlow, ylow = data_dict[self.modality_names[0]]["spatial_coords"].numpy().min(0)
-                xhigh, yhigh = data_dict[self.modality_names[0]]["spatial_coords"].numpy().max(0)
+                xlow, ylow = (
+                    data_dict[self.modality_names[0]]["spatial_coords"].numpy().min(0)
+                )
+                xhigh, yhigh = (
+                    data_dict[self.modality_names[0]]["spatial_coords"].numpy().max(0)
+                )
                 # xlimits = [0, 1]
                 # ylimits = [0, 1]
                 xlimits = [xlow, xhigh]
@@ -230,8 +234,12 @@ class VariationalWarpGP(WarpGP):
             kernel_G = lambda x1, x2: rbf_kernel(
                 x1,
                 x2,
-                lengthscale_unconstrained=self.kernel_lengthscales[ii], #torch.tensor(np.log(0.001)), #
-                output_variance_unconstrained=self.kernel_variances[ii], #torch.tensor(np.log(0.001)), #,
+                lengthscale_unconstrained=self.kernel_lengthscales[
+                    ii
+                ],  # torch.tensor(np.log(0.001)), #
+                output_variance_unconstrained=self.kernel_variances[
+                    ii
+                ],  # torch.tensor(np.log(0.001)), #,
             )
 
             ## Collect data from all modalities for this view
@@ -300,7 +308,13 @@ class VariationalWarpGP(WarpGP):
                 aKa = torch.sum(torch.square(a_t_Kchol), dim=1)
                 a_t_Omega_tril = torch.matmul(alpha_x.t(), curr_Omega_tril)
                 aOmega_a = torch.sum(torch.square(a_t_Omega_tril), dim=1)
-                Sigma_tilde = Kff_diag - aKa + aOmega_a + self.diagonal_offset + self.noise_variance_pos[0]
+                Sigma_tilde = (
+                    Kff_diag
+                    - aKa
+                    + aOmega_a
+                    + self.diagonal_offset
+                    + self.noise_variance_pos[0]
+                )
 
                 # Sample
                 G_marginal_dist = torch.distributions.MultivariateNormal(
@@ -316,7 +330,7 @@ class VariationalWarpGP(WarpGP):
                         :, curr_idx
                     ]
 
-                    # 
+                    #
                     self.G_means[mod][self.view_idx[mod][ii], jj] = mu_tilde[curr_idx]
 
         ## Sample F from p(F | G, Gtilde)
@@ -446,7 +460,7 @@ class VariationalWarpGP(WarpGP):
                 pu = torch.distributions.MultivariateNormal(
                     loc=self.mu_z_F[:, jj], scale_tril=self.Kuu_chol
                 )
-                KL_div += torch.distributions.kl.kl_divergence(qu, pu) #/ self.Ps[mod]
+                KL_div += torch.distributions.kl.kl_divergence(qu, pu)  # / self.Ps[mod]
                 # print(torch.distributions.kl.kl_divergence(qu, pu))
 
             for jj in range(self.Ps[mod]):
@@ -463,7 +477,7 @@ class VariationalWarpGP(WarpGP):
         # import ipdb; ipdb.set_trace()
 
         mean_penalty = self.compute_mean_penalty()
-        
+
         # import ipdb; ipdb.set_trace()
 
         ## Penalty on spatial variance parameters

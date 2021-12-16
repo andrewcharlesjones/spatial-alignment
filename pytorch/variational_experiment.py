@@ -107,8 +107,6 @@ def two_d_experiment():
     #     curr_Y = Y_orig.copy()
     #     Y[view_idx[vv]] = curr_Y #+ np.random.normal(scale=0.1, size=curr_Y.shape)
 
-    
-
     # K_XX = kernel(X_orig_single, X_orig_single, [np.log(0.1), np.log(0.1)])
     # X1_warped = np.vstack(
     #     [mvnpy.rvs(X_orig_single[:, dd], K_XX) for dd in range(n_spatial_dims)]
@@ -120,8 +118,12 @@ def two_d_experiment():
 
     Y = np.concatenate([Y_orig, Y_orig], axis=0)
     X = X_orig.copy()
-    X[n_samples_per_view:] = X[n_samples_per_view:] @ (np.eye(2) + np.random.normal(0, 0.05, size=(2, 2))) #+ np.random.normal(scale=0.25, size=X_orig_single.shape)
-    X[:n_samples_per_view] = X[:n_samples_per_view] @ (np.eye(2) + np.random.normal(0, 0.05, size=(2, 2))) #+ np.random.normal(scale=0.25, size=X_orig_single.shape)
+    X[n_samples_per_view:] = X[n_samples_per_view:] @ (
+        np.eye(2) + np.random.normal(0, 0.05, size=(2, 2))
+    )  # + np.random.normal(scale=0.25, size=X_orig_single.shape)
+    X[:n_samples_per_view] = X[:n_samples_per_view] @ (
+        np.eye(2) + np.random.normal(0, 0.05, size=(2, 2))
+    )  # + np.random.normal(scale=0.25, size=X_orig_single.shape)
 
     x = torch.from_numpy(X).float().clone()
     y = torch.from_numpy(Y).float().clone()
@@ -304,7 +306,7 @@ def two_d_experiment():
     matplotlib.rc("font", **font)
     matplotlib.rcParams["text.usetex"] = True
 
-    fig = plt.figure(figsize=(24, 10)) #, facecolor="white")
+    fig = plt.figure(figsize=(24, 10))  # , facecolor="white")
     data_expression_ax = fig.add_subplot(121, frameon=False)
     latent_expression_ax = fig.add_subplot(122, frameon=False)
     data_expression_ax.set_xlabel("Spatial coordinate 1")
@@ -337,7 +339,6 @@ def two_d_experiment():
     plt.tight_layout()
     plt.savefig("../plots/two_d_simulation.png")
     plt.show()
-
 
     import ipdb
 
@@ -577,7 +578,7 @@ def one_d_experiment():
     matplotlib.rc("font", **font)
     matplotlib.rcParams["text.usetex"] = True
 
-    fig = plt.figure(figsize=(10, 10)) #, facecolor="white")
+    fig = plt.figure(figsize=(10, 10))  # , facecolor="white")
     data_expression_ax = fig.add_subplot(211, frameon=False)
     latent_expression_ax = fig.add_subplot(212, frameon=False)
     data_expression_ax.set_xlabel("Spatial coordinate")

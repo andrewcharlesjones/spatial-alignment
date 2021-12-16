@@ -3,6 +3,7 @@ import seaborn as sns
 import numpy as np
 import pandas as pd
 import matplotlib
+
 font = {"size": 15}
 matplotlib.rc("font", **font)
 # matplotlib.rcParams["text.usetex"] = True
@@ -26,7 +27,7 @@ X = pd.read_csv(data_path).values
 G = pd.read_csv(G_path).values
 
 n = X.shape[0]
-view_idx = [np.arange(0, n//2), np.arange(n//2, n)]
+view_idx = [np.arange(0, n // 2), np.arange(n // 2, n)]
 
 plt.figure(figsize=(14, 7))
 markers = [".", "+", "^"]
@@ -34,7 +35,14 @@ markers = [".", "+", "^"]
 plt.subplot(121)
 for ii, curr_view_idx in enumerate(view_idx):
     curr_X = X[curr_view_idx]
-    plt.scatter(curr_X[:, 0], curr_X[:, 1], label="View {}".format(ii + 1), marker=markers[ii], s=150, c=Y[curr_view_idx, 0])
+    plt.scatter(
+        curr_X[:, 0],
+        curr_X[:, 1],
+        label="View {}".format(ii + 1),
+        marker=markers[ii],
+        s=150,
+        c=Y[curr_view_idx, 0],
+    )
     plt.legend(loc="upper right")
     plt.xlabel("Spatial dimension 1")
     plt.ylabel("Spatial dimension 2")
@@ -44,7 +52,14 @@ plt.colorbar()
 plt.subplot(122)
 for ii, curr_view_idx in enumerate(view_idx):
     curr_X_warped = G[curr_view_idx]
-    plt.scatter(curr_X_warped[:, 0], curr_X_warped[:, 1], label="View {}".format(ii + 1), marker=markers[ii], s=150, c=Y[curr_view_idx, 0])
+    plt.scatter(
+        curr_X_warped[:, 0],
+        curr_X_warped[:, 1],
+        label="View {}".format(ii + 1),
+        marker=markers[ii],
+        s=150,
+        c=Y[curr_view_idx, 0],
+    )
     plt.legend(loc="upper right")
     plt.xlabel("Spatial dimension 1")
     plt.ylabel("Spatial dimension 2")
@@ -55,4 +70,6 @@ plt.tight_layout()
 # plt.savefig("./plots/example_alignment_simulated.png")
 plt.show()
 
-import ipdb; ipdb.set_trace()
+import ipdb
+
+ipdb.set_trace()

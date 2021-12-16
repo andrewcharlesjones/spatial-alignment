@@ -20,7 +20,7 @@ class WarpGP(nn.Module):
         n_spatial_dims=2,
         n_noise_variance_params=2,
         kernel_func=gp.kernels.RBF,
-        mean_penalty_param=0.,
+        mean_penalty_param=0.0,
     ):
         super(WarpGP, self).__init__()
         self.modality_names = list(data_dict.keys())
@@ -86,7 +86,9 @@ class WarpGP(nn.Module):
 
         # self.G_param = nn.Parameter(G_init[self.view_idx[0], :])
         self.noise_variance = nn.Parameter(torch.randn([self.n_noise_variance_params]))
-        self.kernel_variances = nn.Parameter(torch.randn([self.n_kernel_params // 2]) - 5)
+        self.kernel_variances = nn.Parameter(
+            torch.randn([self.n_kernel_params // 2]) - 5
+        )
         self.kernel_lengthscales = nn.Parameter(
             torch.randn([self.n_kernel_params // 2])
         )

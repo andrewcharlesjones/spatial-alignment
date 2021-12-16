@@ -11,6 +11,7 @@ import socket
 
 sys.path.append("..")
 from util import get_st_coordinates, polar_warp
+
 # from warp_gp_multimodal import TwoLayerWarpGP
 from variational_warp_gp_lmc2 import VariationalWarpGP
 from torch.utils.data import Dataset, DataLoader
@@ -169,7 +170,6 @@ if __name__ == "__main__":
         mean_penalty_param=MEAN_PENALTY_PARAM,
     ).to(device)
 
-
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
 
     def train(model, loss_fn, optimizer):
@@ -179,9 +179,7 @@ if __name__ == "__main__":
         # Gs, means_G_list, covs_G_list, means_Y, covs_Y = model.forward(
         #     {"expression": x}
         # )
-        G_samples, F_samples = model.forward(
-            {"expression": x}
-        )
+        G_samples, F_samples = model.forward({"expression": x})
 
         # Compute loss
         # loss = loss_fn(data_dict, Gs, means_G_list, covs_G_list, means_Y, covs_Y)
@@ -194,7 +192,6 @@ if __name__ == "__main__":
 
         return loss.item()
 
-    
     loss_trace = []
     for t in range(N_EPOCHS):
         loss = train(model, model.loss_fn, optimizer)
