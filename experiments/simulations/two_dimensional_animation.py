@@ -42,8 +42,8 @@ n_views = 2
 m_G = 50
 m_X_per_view = 50
 
-N_EPOCHS = 2000
-PRINT_EVERY = 100
+N_EPOCHS = 10
+PRINT_EVERY = 1
 # N_LATENT_GPS = 1
 
 
@@ -175,7 +175,7 @@ def two_d_gpsa(
     writervideo = animation.FFMpegWriter(fps=5)
     ani = animation.ArtistAnimation(fig, ims, interval=50, blit=True, repeat_delay=500)
     ani.save(
-            pjoin("out", "alignment_animation.mp4"),
+            pjoin("out", "alignment_animation.gif"),
             writer=writervideo,
             dpi=1000,
         )
