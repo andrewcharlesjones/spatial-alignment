@@ -42,8 +42,8 @@ n_views = 2
 m_G = 50
 m_X_per_view = 50
 
-N_EPOCHS = 10
-PRINT_EVERY = 1
+N_EPOCHS = 2000
+PRINT_EVERY = 100
 # N_LATENT_GPS = 1
 
 
