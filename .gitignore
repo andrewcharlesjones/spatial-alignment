@@ -12,3 +12,5 @@ job.slurm.*
 .csv
 job.slurm*
 scp*
+pytorch/
+notebooks/
