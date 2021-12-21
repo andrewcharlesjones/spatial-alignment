@@ -9,3 +9,6 @@ old/
 .DS_Store
 job.slurm.*
 .DS_Store/
+.csv
+job.slurm*
+scp*

@@ -266,8 +266,6 @@ if __name__ == "__main__":
             error_mat[ii, jj] = err
             error_mat_paste[ii, jj] = err_paste
 
-        
-
         font = {"size": 30}
         matplotlib.rc("font", **font)
         matplotlib.rcParams["text.usetex"] = True
@@ -278,7 +276,9 @@ if __name__ == "__main__":
         )
         error_df_gpsa["method"] = ["GPSA"] * error_df_gpsa.shape[0]
         error_df_paste = pd.melt(
-            pd.DataFrame(error_mat_paste[: ii + 1, :], columns=coefficient_variance_list)
+            pd.DataFrame(
+                error_mat_paste[: ii + 1, :], columns=coefficient_variance_list
+            )
         )
         error_df_paste["method"] = ["PASTE"] * error_df_paste.shape[0]
 
@@ -292,7 +292,9 @@ if __name__ == "__main__":
         plt.ylabel("Alignent error")
         plt.title("Polar warp")
         plt.tight_layout()
-        plt.savefig("../../plots/two_d_experiments/error_plot_warp_magnitude_polar_warp.png")
+        plt.savefig(
+            "../../plots/two_d_experiments/error_plot_warp_magnitude_polar_warp.png"
+        )
         plt.close()
 
         print("Done!")

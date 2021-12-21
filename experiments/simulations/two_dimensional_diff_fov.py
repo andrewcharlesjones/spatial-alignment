@@ -39,7 +39,7 @@ n_views = 2
 m_G = 40
 m_X_per_view = 40
 
-N_EPOCHS = 1000
+N_EPOCHS = 2000
 PRINT_EVERY = 50
 
 
@@ -48,6 +48,7 @@ def two_d_gpsa_diff_fov(
     n_epochs,
     n_latent_gps,
     warp_kernel_variance=0.1,
+    warp_kernel_lengthscale=10.,
     plot_intermediate=True,
     make_plot=False,
 ):
@@ -57,12 +58,13 @@ def two_d_gpsa_diff_fov(
         n_outputs,
         grid_size=15,
         n_latent_gps=n_latent_gps["expression"],
-        kernel_lengthscale=10.0,
+        kernel_lengthscale=warp_kernel_lengthscale,
         kernel_variance=warp_kernel_variance,
     )
 
     X = X - X.min(0)
     X = X / X.max(0) * 10
+    # import ipdb; ipdb.set_trace()
 
     ##  PASTE
     slice1 = anndata.AnnData(np.exp(Y[view_idx[0]]))
@@ -107,30 +109,30 @@ def two_d_gpsa_diff_fov(
         n_spatial_dims=n_spatial_dims,
         m_X_per_view=m_X_per_view,
         m_G=m_G,
-        data_init=False,
+        data_init=True,
         minmax_init=False,
-        grid_init=True,
+        grid_init=False,
         n_latent_gps=n_latent_gps,
         # n_latent_gps=None,
         mean_function="identity_fixed",
-        fixed_warp_kernel_variances=np.ones(n_views) * 0.1,
-        fixed_warp_kernel_lengthscales=np.ones(n_views) * 10,
+        # fixed_warp_kernel_variances=np.ones(n_views) * 0.1,
+        # fixed_warp_kernel_lengthscales=np.ones(n_views) * 10,
         # fixed_data_kernel_lengthscales=np.exp(gpr.kernel_.k1.theta.astype(np.float32)),
         # fixed_data_kernel_lengthscales=np.exp(gpr.kernel_.k1.theta[0]),
         # mean_function="identity_initialized",
-        # fixed_view_idx=0,
+        fixed_view_idx=0,
     ).to(device)
 
     view_idx, Ns, _, _ = model.create_view_idx_dict(data_dict)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-1)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
 
     def train(model, loss_fn, optimizer):
         model.train()
 
         # Forward pass
         G_means, G_samples, F_latent_samples, F_samples = model.forward(
-            {"expression": x}, view_idx=view_idx, Ns=Ns, S=1
+            {"expression": x}, view_idx=view_idx, Ns=Ns, S=5
         )
 
         # Compute loss
@@ -149,33 +151,12 @@ def two_d_gpsa_diff_fov(
     latent_expression_ax = fig.add_subplot(121, frameon=False)
     plt.show(block=False)
 
-    convergence_checker = ConvergenceChecker(span=100)
-
     loss_trace = []
     error_trace = []
     for t in range(n_epochs):
         loss = train(model, model.loss_fn, optimizer)
         loss_trace.append(loss)
 
-        # if plot_intermediate and t % PRINT_EVERY == 0:
-        #     print("Iter: {0:<10} LL {1:1.3e}".format(t, -loss))
-        #     G_means, G_samples, F_latent_samples, F_samples = model.forward(
-        #         {"expression": x}, view_idx=view_idx, Ns=Ns
-        #     )
-        #     callback_twod(
-        #         model,
-        #         X,
-        #         Y,
-        #         data_expression_ax=data_expression_ax,
-        #         latent_expression_ax=latent_expression_ax,
-        #         X_aligned=G_means,
-        #     )
-        #     plt.draw()
-        #     plt.pause(1 / 60.0)
-
-        #     curr_X_aligned = G_means["expression"].detach().numpy()
-        #     err = np.mean(np.sum((curr_X_aligned[view_idx["expression"][0][keep_idx]] - curr_X_aligned[view_idx["expression"][1]])**2, axis=1))
-        #     print("Error: {}".format(err))
     G_means, G_samples, F_latent_samples, F_samples = model.forward(
         {"expression": x}, view_idx=view_idx, Ns=Ns
     )
@@ -195,93 +176,207 @@ def two_d_gpsa_diff_fov(
 
     if make_plot:
         plt.close()
-        plt.figure(figsize=(21, 7))
 
-        viewname_list = []
-        markers_list = []
-        for vv in range(n_views):
-            viewname_list.append(
-                ["View {}".format(vv + 1)] * view_idx["expression"][vv].shape[0]
-            )
+        import matplotlib
 
-        viewname_list = np.concatenate(viewname_list)
+        LATEX_FONTSIZE = 35
+        font = {"size": LATEX_FONTSIZE}
+        matplotlib.rc("font", **font)
+        matplotlib.rcParams["text.usetex"] = True
+        matplotlib.rcParams['xtick.labelsize'] = LATEX_FONTSIZE//2 
+        matplotlib.rcParams['ytick.labelsize'] = LATEX_FONTSIZE//2 
 
-        SCATTERPOINT_SIZE = 200
+        fig = plt.figure(figsize=(23, 7))
+        data_ax = fig.add_subplot(131, frameon=False)
+        paste_ax = fig.add_subplot(132, frameon=False)
+        aligned_ax = fig.add_subplot(133, frameon=False)
 
-        plt.subplot(131)
-        plot_df = pd.DataFrame(
-            {
-                "X1": X[:, 0],
-                "X2": X[:, 1],
-                "Y": Y[:, 0],
-                "view": viewname_list,
-            }
-        )
-        g = sns.scatterplot(
-            data=plot_df,
-            x="X1",
-            y="X2",
-            hue="Y",
-            style="view",
-            s=SCATTERPOINT_SIZE,
-            linewidth=0.4,
-            palette="viridis",
-        )
-        g.legend_.remove()
-        plt.axis("off")
-        plt.title("Data")
+        data_ax.set_xlabel("Spatial 1")
+        data_ax.set_ylabel("Spatial 2")
+        aligned_ax.set_xlabel("Spatial 1")
+        aligned_ax.set_ylabel("Spatial 2")
+        paste_ax.set_xlabel("Spatial 1")
+        paste_ax.set_ylabel("Spatial 2")
 
-        plt.subplot(132)
+        data_ax.set_title("Data")
+        aligned_ax.set_title("GPSA")
+        paste_ax.set_title("PASTE")
+
+        markers = ["o", "X"]
+        edgecolors = ["black", "gray"]
+        sizes = [400, 200]
+        linewidth = 3
+
         paste_aligned_coords = np.concatenate(
             [new_slices[0].obsm["spatial"], new_slices[1].obsm["spatial"]], axis=0
         )
-        plot_df = pd.DataFrame(
-            {
-                "X1": paste_aligned_coords[:, 0],
-                "X2": paste_aligned_coords[:, 1],
-                "Y": Y[:, 0],
-                "view": viewname_list,
-            }
-        )
-        g = sns.scatterplot(
-            data=plot_df,
-            x="X1",
-            y="X2",
-            hue="Y",
-            style="view",
-            s=SCATTERPOINT_SIZE,
-            linewidth=0.4,
-            palette="viridis",
-        )
-        g.legend_.remove()
-        plt.axis("off")
-        plt.title("PASTE")
+        minY, maxY = Y[:, 0].min(), Y[:, 0].max()
+        for vv in range(model.n_views):
+            curr_idx = model.view_idx["expression"][vv]
+            data_ax.scatter(
+                X[curr_idx][:, 0],
+                X[curr_idx][:, 1],
+                c=Y[curr_idx][:, 0],
+                marker=markers[vv],
+                s=sizes[vv],
+                edgecolor=edgecolors[vv],
+                linewidth=linewidth,
+                vmin=minY,
+                vmax=maxY,
+            )
 
-        plt.subplot(133)
-        plot_df = pd.DataFrame(
-            {
-                "X1": G_means["expression"].detach().numpy()[:, 0],
-                "X2": G_means["expression"].detach().numpy()[:, 1],
-                "Y": Y[:, 0],
-                "view": viewname_list,
-            }
-        )
-        g = sns.scatterplot(
-            data=plot_df,
-            x="X1",
-            y="X2",
-            hue="Y",
-            style="view",
-            s=SCATTERPOINT_SIZE,
-            linewidth=0.4,
-            palette="viridis",
-        )
-        g.legend_.remove()
-        plt.axis("off")
-        plt.title("GPSA")
+            paste_ax.scatter(
+                paste_aligned_coords[curr_idx][:, 0],
+                paste_aligned_coords[curr_idx][:, 1],
+                c=Y[curr_idx][:, 0],
+                marker=markers[vv],
+                s=sizes[vv],
+                edgecolor=edgecolors[vv],
+                linewidth=linewidth,
+                vmin=minY,
+                vmax=maxY,
+            )
+
+            curr_aligned_coords = (
+                G_means["expression"].detach().numpy()[curr_idx]
+            )
+            # aligned_ax.scatter(
+            #     curr_aligned_coords[:, 0],
+            #     curr_aligned_coords[:, 1],
+            #     c=Y[curr_idx][:, 0],
+            #     marker=markers[vv],
+            #     s=sizes[vv],
+            #     edgecolor=edgecolors[vv],
+            #     linewidth=linewidth,
+            #     label="View {}".format(vv + 1),
+            #     vmin=minY,
+            #     vmax=maxY,
+            # )
+
+            if vv == 0:
+                aligned_ax.scatter(
+                    X[curr_idx][:, 0],
+                    X[curr_idx][:, 1],
+                    c=Y[curr_idx][:, 0],
+                    marker=markers[vv],
+                    s=sizes[vv],
+                    edgecolor=edgecolors[vv],
+                    linewidth=linewidth,
+                    label="View {}".format(vv + 1),
+                    vmin=minY,
+                    vmax=maxY,
+                )
+            else:
+                aligned_ax.scatter(
+                    curr_aligned_coords[:, 0],
+                    curr_aligned_coords[:, 1],
+                    c=Y[curr_idx][:, 0],
+                    marker=markers[vv],
+                    s=sizes[vv],
+                    edgecolor=edgecolors[vv],
+                    linewidth=linewidth,
+                    label="View {}".format(vv + 1),
+                    vmin=minY,
+                    vmax=maxY,
+                )
+
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        plt.tight_layout()
         plt.savefig("./out/partial_overlap_comparison_alignments.png")
         plt.show()
         plt.close()
+
+            
+            
+
+        
+        # plt.figure(figsize=(21, 7))
+
+        # viewname_list = []
+        # markers_list = []
+        # for vv in range(n_views):
+        #     viewname_list.append(
+        #         ["View {}".format(vv + 1)] * view_idx["expression"][vv].shape[0]
+        #     )
+
+        # viewname_list = np.concatenate(viewname_list)
+
+        # SCATTERPOINT_SIZE = 200
+
+        # plt.subplot(131)
+        # plot_df = pd.DataFrame(
+        #     {
+        #         "X1": X[:, 0],
+        #         "X2": X[:, 1],
+        #         "Y": Y[:, 0],
+        #         "view": viewname_list,
+        #     }
+        # )
+        # g = sns.scatterplot(
+        #     data=plot_df,
+        #     x="X1",
+        #     y="X2",
+        #     hue="Y",
+        #     style="view",
+        #     s=SCATTERPOINT_SIZE,
+        #     linewidth=0.4,
+        #     palette="viridis",
+        # )
+        # g.legend_.remove()
+        # plt.axis("off")
+        # plt.title("Data")
+
+        # plt.subplot(132)
+        # paste_aligned_coords = np.concatenate(
+        #     [new_slices[0].obsm["spatial"], new_slices[1].obsm["spatial"]], axis=0
+        # )
+        # plot_df = pd.DataFrame(
+        #     {
+        #         "X1": paste_aligned_coords[:, 0],
+        #         "X2": paste_aligned_coords[:, 1],
+        #         "Y": Y[:, 0],
+        #         "view": viewname_list,
+        #     }
+        # )
+        # g = sns.scatterplot(
+        #     data=plot_df,
+        #     x="X1",
+        #     y="X2",
+        #     hue="Y",
+        #     style="view",
+        #     s=SCATTERPOINT_SIZE,
+        #     linewidth=0.4,
+        #     palette="viridis",
+        # )
+        # g.legend_.remove()
+        # plt.axis("off")
+        # plt.title("PASTE")
+
+        # plt.subplot(133)
+        # plot_df = pd.DataFrame(
+        #     {
+        #         "X1": G_means["expression"].detach().numpy()[:, 0],
+        #         "X2": G_means["expression"].detach().numpy()[:, 1],
+        #         "Y": Y[:, 0],
+        #         "view": viewname_list,
+        #     }
+        # )
+        # g = sns.scatterplot(
+        #     data=plot_df,
+        #     x="X1",
+        #     y="X2",
+        #     hue="Y",
+        #     style="view",
+        #     s=SCATTERPOINT_SIZE,
+        #     linewidth=0.4,
+        #     palette="viridis",
+        # )
+        # g.legend_.remove()
+        # plt.axis("off")
+        # plt.title("GPSA")
+        # plt.savefig("./out/partial_overlap_comparison_alignments.png")
+        # plt.show()
+        # plt.close()
 
     plt.close()
 
@@ -300,9 +395,10 @@ if __name__ == "__main__":
         X, Y, G_means, model, err_paste, err_gpsa = two_d_gpsa_diff_fov(
             n_epochs=N_EPOCHS,
             n_outputs=n_outputs,
-            warp_kernel_variance=0.2,
-            n_latent_gps={"expression": 3},
-            make_plot=True if ii == n_repeats - 1 else False,
+            warp_kernel_variance=.1,
+            warp_kernel_lengthscale=2.5,
+            n_latent_gps={"expression": 5},
+            make_plot=True if ii == 0 else False,
         )
 
         errs_paste[ii] = err_paste

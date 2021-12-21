@@ -146,8 +146,9 @@ class VariationalWarpGP(WarpGP):
                 Omega_sqt = 0.1 * torch.randn(
                     size=[self.m_X_per_view, self.m_X_per_view]
                 )
-
-                Omega_sqt_G_list[ii * self.n_views + jj, :, :] = Omega_sqt
+                # import ipdb; ipdb.set_trace()
+                # Omega_sqt_G_list[ii * self.n_views + jj, :, :] = Omega_sqt
+                Omega_sqt_G_list[jj * self.n_views + ii, :, :] = Omega_sqt
         self.Omega_sqt_G_list = nn.Parameter(Omega_sqt_G_list)
 
         Omega_sqt_F_dict = torch.nn.ParameterDict()
@@ -239,17 +240,22 @@ class VariationalWarpGP(WarpGP):
         self.curr_Omega_tril_list = torch.cholesky(curr_Omega_G)
 
         # start = time.time()
+        # import ipdb; ipdb.set_trace()
         for vv in range(self.n_views):
 
             ## If this view is fixed (template-based alignment), then we don't need to sample for it.
             if self.fixed_view_idx is not None and self.fixed_view_idx == vv:
-                for jj in range(self.n_spatial_dims):
-                    for mm, mod in enumerate(self.modality_names):
-                        for ss in range(S):
-                            observed_X_spatial = X_spatial[mod][view_idx[mod][vv], jj]
-                            G_samples[mod][
-                                ss, view_idx[mod][vv], jj
-                            ] = observed_X_spatial
+                # for jj in range(self.n_spatial_dims):
+                for mm, mod in enumerate(self.modality_names):
+                    observed_X_spatial = X_spatial[mod][view_idx[mod][vv]]
+                    G_means[mod][view_idx[mod][vv]] = observed_X_spatial
+
+
+                    # for ss in range(S):
+                        
+                    G_samples[mod][
+                        :, view_idx[mod][vv], :
+                    ] = observed_X_spatial
 
                 continue
 
@@ -391,7 +397,6 @@ class VariationalWarpGP(WarpGP):
                 self.curr_Omega_tril_F[mod],
             )
             
-
             eps = torch.randn(mu_tilde.shape)
             curr_F_latent_samples = (
                 mu_tilde + torch.sqrt(torch.transpose(Sigma_tilde, 1, 2)) * eps
@@ -406,18 +411,12 @@ class VariationalWarpGP(WarpGP):
 
             self.F_latent_samples[mod] = curr_F_latent_samples
             self.F_observed_samples[mod] = F_observed_mean
-            # end = time.time()
-            # print("FORWARD 2:", end - start)
 
-
-            # end = time.time()
-            # print("FORWARD 2:", end - start)
 
         return G_means, G_samples, self.F_latent_samples, self.F_observed_samples
 
     def loss_fn(self, data_dict, F_samples):
         # This is the negative (approximate) ELBO
-        # start = time.time()
 
         # KL terms
         KL_div = 0
@@ -429,7 +428,8 @@ class VariationalWarpGP(WarpGP):
             for jj in range(self.n_spatial_dims):
                 qu = torch.distributions.MultivariateNormal(
                     loc=self.delta_G_list[vv, :, jj],
-                    scale_tril=self.curr_Omega_tril_list[vv * self.n_views + jj, :, :],
+                    # scale_tril=self.curr_Omega_tril_list[vv * self.n_views + jj, :, :],
+                    scale_tril=self.curr_Omega_tril_list[jj * self.n_views + vv, :, :],
                 )
                 pu = torch.distributions.MultivariateNormal(
                     loc=self.mu_z_G[vv, :, jj],
@@ -438,11 +438,6 @@ class VariationalWarpGP(WarpGP):
                 curr_KL_div = torch.distributions.kl.kl_divergence(qu, pu)
 
                 KL_div += curr_KL_div
-
-        # end = time.time()
-        # print("LOSS 1:", end - start)
-
-        # start = time.time()
 
         ## F
         LL = 0
@@ -463,10 +458,9 @@ class VariationalWarpGP(WarpGP):
                 scale=self.noise_variance_pos[-self.n_modalities + mm],
             )
             S = F_samples[mod].shape[0]
+            
             LL += Y_distribution.log_prob(data_dict[mod]["outputs"]).sum() / S
 
-        # end = time.time()
-        # print("LOSS: ", end-start)
         return -LL + KL_div
 
 

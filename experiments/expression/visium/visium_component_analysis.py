@@ -57,6 +57,7 @@ N_LATENT_GPS = {"expression": 5}
 N_EPOCHS = 5000
 PRINT_EVERY = 20
 
+
 def process_data(adata, n_top_genes=2000):
     adata.var_names_make_unique()
     adata.var["mt"] = adata.var_names.str.startswith("MT-")
@@ -69,8 +70,11 @@ def process_data(adata, n_top_genes=2000):
 
     sc.pp.normalize_total(adata, inplace=True)
     sc.pp.log1p(adata)
-    sc.pp.highly_variable_genes(adata, flavor="seurat", n_top_genes=n_top_genes, subset=True)
+    sc.pp.highly_variable_genes(
+        adata, flavor="seurat", n_top_genes=n_top_genes, subset=True
+    )
     return adata
+
 
 data_slice1 = sc.read_visium(pjoin(DATA_DIR, "sample1"))
 data_slice1 = process_data(data_slice1)
@@ -110,10 +114,10 @@ view_idx = [
 # all_slices = all_slices[:, highly_variable_genes]
 
 # import ipdb; ipdb.set_trace()
-X1 = data[data.obs.batch == '0'].obsm["spatial"]
-X2 = data[data.obs.batch == '1'].obsm["spatial"]
-Y1 = np.array(data[data.obs.batch == '0'].X.todense())
-Y2 = np.array(data[data.obs.batch == '1'].X.todense())
+X1 = data[data.obs.batch == "0"].obsm["spatial"]
+X2 = data[data.obs.batch == "1"].obsm["spatial"]
+Y1 = np.array(data[data.obs.batch == "0"].X.todense())
+Y2 = np.array(data[data.obs.batch == "1"].X.todense())
 
 X1 = scale_spatial_coords(X1)
 X2 = scale_spatial_coords(X2)
@@ -157,7 +161,7 @@ model = VariationalWarpGP(
     grid_init=False,
     n_latent_gps=N_LATENT_GPS,
     mean_function="identity_fixed",
-    fixed_warp_kernel_variances=np.ones(n_views) * 1.,
+    fixed_warp_kernel_variances=np.ones(n_views) * 1.0,
     fixed_warp_kernel_lengthscales=np.ones(n_views) * 10,
     # mean_function="identity_initialized",
     # fixed_view_idx=0,
@@ -208,13 +212,11 @@ ax10 = fig.add_subplot(2, 5, 10, frameon=False)
 plt.show(block=False)
 
 
-
 for t in range(N_EPOCHS):
     loss, G_means, F_latent_samples = train(model, model.loss_fn, optimizer)
 
     if t % PRINT_EVERY == 0:
         print("Iter: {0:<10} LL {1:1.3e}".format(t, -loss))
-        
 
         ax1.cla()
         ax2.cla()
@@ -230,7 +232,10 @@ for t in range(N_EPOCHS):
         ax1.scatter(
             X[view_idx["expression"][0], 0],
             X[view_idx["expression"][0], 1],
-            c=F_latent_samples["expression"].mean(0)[view_idx["expression"][0], 0].detach().numpy(),
+            c=F_latent_samples["expression"]
+            .mean(0)[view_idx["expression"][0], 0]
+            .detach()
+            .numpy(),
             marker="H",
             s=10,
         )
@@ -238,7 +243,10 @@ for t in range(N_EPOCHS):
         ax2.scatter(
             X[view_idx["expression"][0], 0],
             X[view_idx["expression"][0], 1],
-            c=F_latent_samples["expression"].mean(0)[view_idx["expression"][0], 1].detach().numpy(),
+            c=F_latent_samples["expression"]
+            .mean(0)[view_idx["expression"][0], 1]
+            .detach()
+            .numpy(),
             marker="H",
             s=10,
         )
@@ -246,7 +254,10 @@ for t in range(N_EPOCHS):
         ax3.scatter(
             X[view_idx["expression"][0], 0],
             X[view_idx["expression"][0], 1],
-            c=F_latent_samples["expression"].mean(0)[view_idx["expression"][0], 2].detach().numpy(),
+            c=F_latent_samples["expression"]
+            .mean(0)[view_idx["expression"][0], 2]
+            .detach()
+            .numpy(),
             marker="H",
             s=10,
         )
@@ -254,7 +265,10 @@ for t in range(N_EPOCHS):
         ax4.scatter(
             X[view_idx["expression"][0], 0],
             X[view_idx["expression"][0], 1],
-            c=F_latent_samples["expression"].mean(0)[view_idx["expression"][0], 3].detach().numpy(),
+            c=F_latent_samples["expression"]
+            .mean(0)[view_idx["expression"][0], 3]
+            .detach()
+            .numpy(),
             marker="H",
             s=10,
         )
@@ -262,7 +276,10 @@ for t in range(N_EPOCHS):
         ax5.scatter(
             X[view_idx["expression"][0], 0],
             X[view_idx["expression"][0], 1],
-            c=F_latent_samples["expression"].mean(0)[view_idx["expression"][0], 4].detach().numpy(),
+            c=F_latent_samples["expression"]
+            .mean(0)[view_idx["expression"][0], 4]
+            .detach()
+            .numpy(),
             marker="H",
             s=10,
         )
@@ -273,35 +290,50 @@ for t in range(N_EPOCHS):
         ax6.scatter(
             X[view_idx["expression"][1], 0],
             X[view_idx["expression"][1], 1],
-            c=F_latent_samples["expression"].mean(0)[view_idx["expression"][1], 0].detach().numpy(),
+            c=F_latent_samples["expression"]
+            .mean(0)[view_idx["expression"][1], 0]
+            .detach()
+            .numpy(),
             marker="H",
             s=10,
         )
         ax7.scatter(
             X[view_idx["expression"][1], 0],
             X[view_idx["expression"][1], 1],
-            c=F_latent_samples["expression"].mean(0)[view_idx["expression"][1], 1].detach().numpy(),
+            c=F_latent_samples["expression"]
+            .mean(0)[view_idx["expression"][1], 1]
+            .detach()
+            .numpy(),
             marker="H",
             s=10,
         )
         ax8.scatter(
             X[view_idx["expression"][1], 0],
             X[view_idx["expression"][1], 1],
-            c=F_latent_samples["expression"].mean(0)[view_idx["expression"][1], 2].detach().numpy(),
+            c=F_latent_samples["expression"]
+            .mean(0)[view_idx["expression"][1], 2]
+            .detach()
+            .numpy(),
             marker="H",
             s=10,
         )
         ax9.scatter(
             X[view_idx["expression"][1], 0],
             X[view_idx["expression"][1], 1],
-            c=F_latent_samples["expression"].mean(0)[view_idx["expression"][1], 3].detach().numpy(),
+            c=F_latent_samples["expression"]
+            .mean(0)[view_idx["expression"][1], 3]
+            .detach()
+            .numpy(),
             marker="H",
             s=10,
         )
         ax10.scatter(
             X[view_idx["expression"][1], 0],
             X[view_idx["expression"][1], 1],
-            c=F_latent_samples["expression"].mean(0)[view_idx["expression"][1], 4].detach().numpy(),
+            c=F_latent_samples["expression"]
+            .mean(0)[view_idx["expression"][1], 4]
+            .detach()
+            .numpy(),
             marker="H",
             s=10,
         )

@@ -53,8 +53,6 @@ for train_index, test_index in kf.split(aligned_coords):
     preds = gpr.predict(X_test)
     curr_r2_unaligned = r2_score(Y_test, preds)
     print(curr_r2_unaligned)
-    import ipdb; ipdb.set_trace()
+    import ipdb
 
-
-
-
+    ipdb.set_trace()

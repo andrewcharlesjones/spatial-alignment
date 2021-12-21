@@ -217,9 +217,9 @@ if __name__ == "__main__":
     latent_expression_ax.set_ylabel("Spatial 2")
 
     data_expression_ax.set_xticks([0, 5, 10])
-    data_expression_ax.tick_params(axis='both', labelsize=LATEX_FONTSIZE // 2)
+    data_expression_ax.tick_params(axis="both", labelsize=LATEX_FONTSIZE // 2)
     latent_expression_ax.set_xticks([0, 5, 10])
-    latent_expression_ax.tick_params(axis='both', labelsize=LATEX_FONTSIZE // 2)
+    latent_expression_ax.tick_params(axis="both", labelsize=LATEX_FONTSIZE // 2)
 
     plt.tight_layout()
     plt.savefig("../../plots/two_d_simulation.png")

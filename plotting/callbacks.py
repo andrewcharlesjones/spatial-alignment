@@ -390,8 +390,8 @@ def callback_twod_aligned_only(
         s=24,
         marker="h",
     )
-    latent_expression_ax1.scatter(model.Xtilde.detach().numpy()[0, :, 0], model.Xtilde.detach().numpy()[0, :, 1], color="red")
-    latent_expression_ax2.scatter(model.Xtilde.detach().numpy()[1, :, 0], model.Xtilde.detach().numpy()[1, :, 1], color="red")
+    # latent_expression_ax1.scatter(model.Xtilde.detach().numpy()[0, :, 0], model.Xtilde.detach().numpy()[0, :, 1], color="red")
+    # latent_expression_ax2.scatter(model.Xtilde.detach().numpy()[1, :, 0], model.Xtilde.detach().numpy()[1, :, 1], color="red")
 
     plt.axis("off")
 
