@@ -9,17 +9,6 @@ from scipy.stats import pearsonr
 from matplotlib.lines import Line2D
 
 import seaborn as sns
-import sys
-
-sys.path.append("../..")
-
-
-from gp_functions import rbf_covariance
-from scipy.stats import multivariate_normal as mvnpy
-from util import polar_warp
-
-from scipy.stats import wasserstein_distance
-from sklearn.metrics import pairwise_distances
 
 SCATTER_POINT_SIZE = 50
 
