@@ -13,7 +13,7 @@ The `gpsa` package is available on PyPI. To install it, run this command in the 
 pip install gpsa
 ```
 
-The `gpsa` package is primarily written using [PyTorch](). The full package dependencies can be found in `requirements.txt`.
+The `gpsa` package is primarily written using [PyTorch](https://pytorch.org/). The full package dependencies can be found in `requirements.txt`.
 
 ## Usage
 
