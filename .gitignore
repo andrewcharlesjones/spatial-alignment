@@ -18,3 +18,4 @@ notebooks/
 gpr.py
 make_st_data_plots.py
 plot_intermediate_G.py
+gp_functions.py
