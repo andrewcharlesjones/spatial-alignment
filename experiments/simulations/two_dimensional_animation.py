@@ -4,26 +4,17 @@ import matplotlib.pyplot as plt
 
 import seaborn as sns
 import sys
-
-sys.path.append("../..")
-from models.gpsa_vi_lmc import VariationalWarpGP
-from util import matern12_kernel, rbf_kernel
-
+from gpsa import VariationalGPSA, matern12_kernel, rbf_kernel
+from gpsa.plotting import callback_twod
 
 sys.path.append("../../data")
 from simulated.generate_twod_data import generate_twod_data
-from plotting.callbacks import callback_twod
-from util import ConvergenceChecker
-
-## For PASTE
-import scanpy as sc
-import anndata
-import matplotlib.patches as mpatches
 
 import matplotlib.animation as animation
 import matplotlib.image as mpimg
 import os
 from os.path import join as pjoin
+import anndata
 
 import matplotlib
 
@@ -38,13 +29,11 @@ LATEX_FONTSIZE = 35
 
 n_spatial_dims = 2
 n_views = 2
-# n_outputs = 10
 m_G = 50
 m_X_per_view = 50
 
 N_EPOCHS = 2000
 PRINT_EVERY = 100
-# N_LATENT_GPS = 1
 
 
 def two_d_gpsa(
@@ -68,6 +57,33 @@ def two_d_gpsa(
     )
     n_samples_per_view = X.shape[0] // n_views
 
+    plt.figure(figsize=(7, 5))
+    markers = ["o", "X"]
+    for vv in range(n_views):
+        plt.scatter(
+            X[view_idx[vv]][:, 0],
+            X[view_idx[vv]][:, 1],
+            c=Y[view_idx[vv]][:, 0],
+            s=400,
+            marker=markers[vv],
+            label="View {}".format(vv + 1),
+            edgecolor="black",
+            linewidth=2,
+        )
+    plt.xlabel("X1")
+    plt.ylabel("X2")
+    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.tight_layout()
+    plt.savefig("./../../examples/synthetic_data_example.png")
+    plt.close()
+
+    ## Save as anndata object
+    data_obj = anndata.AnnData(Y)
+    data_obj.obsm["spatial"] = X
+    batch_id = np.concatenate([[xx] * n_samples_list[xx] for xx in range(n_views)])
+    data_obj.obs["batch"] = batch_id
+    data_obj.write("../../examples/synthetic_data.h5ad")
+
     x = torch.from_numpy(X).float().clone()
     y = torch.from_numpy(Y).float().clone()
 
@@ -79,7 +95,7 @@ def two_d_gpsa(
         }
     }
 
-    model = VariationalWarpGP(
+    model = VariationalGPSA(
         data_dict,
         n_spatial_dims=n_spatial_dims,
         m_X_per_view=m_X_per_view,
@@ -88,12 +104,9 @@ def two_d_gpsa(
         minmax_init=False,
         grid_init=False,
         n_latent_gps=n_latent_gps,
-        # n_latent_gps=None,
         mean_function="identity_fixed",
         kernel_func_warp=rbf_kernel,
         kernel_func_data=rbf_kernel,
-        # fixed_warp_kernel_variances=np.ones(n_views) * 1.0,
-        # fixed_warp_kernel_lengthscales=np.ones(n_views) * 10,
         fixed_view_idx=fixed_view_idx,
     ).to(device)
 
