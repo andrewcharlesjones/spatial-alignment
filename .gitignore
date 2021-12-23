@@ -20,3 +20,4 @@ make_st_data_plots.py
 plot_intermediate_G.py
 gp_functions.py
 util.py
+!examples/synthetic_data_example.png
