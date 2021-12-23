@@ -35,7 +35,7 @@ m_G = 50
 m_X_per_view = 50
 
 N_EPOCHS = 2000
-PRINT_EVERY = 1000
+PRINT_EVERY = 1500
 # N_LATENT_GPS = 1
 
 
@@ -47,9 +47,11 @@ n_outputs = 30
 # import ipdb; ipdb.set_trace()
 
 
-
 def two_d_gpsa(
-    X, Y, n_samples_list, view_idx,
+    X,
+    Y,
+    n_samples_list,
+    view_idx,
     n_outputs,
     n_epochs,
     n_latent_gps,
@@ -59,7 +61,6 @@ def two_d_gpsa(
     fixed_view_idx=None,
 ):
 
-    
     n_samples_per_view = X.shape[0] // n_views
 
     ##  PASTE
@@ -193,11 +194,14 @@ if __name__ == "__main__":
         kernel_lengthscale=5.0,
         kernel_variance=warp_kernel_variance,
         noise_variance=noise_variance,
+        fixed_view_idx=0,
     )
 
-    
     X, Y, G_means_denovo, model_denovo, err_paste = two_d_gpsa(
-        X, Y, n_samples_list, view_idx,
+        X,
+        Y,
+        n_samples_list,
+        view_idx,
         n_epochs=N_EPOCHS,
         n_outputs=n_outputs,
         warp_kernel_variance=0.5,
@@ -206,7 +210,10 @@ if __name__ == "__main__":
     )
 
     X, Y, G_means_template, model_template, err_paste = two_d_gpsa(
-        X, Y, n_samples_list, view_idx,
+        X,
+        Y,
+        n_samples_list,
+        view_idx,
         n_epochs=N_EPOCHS,
         n_outputs=n_outputs,
         warp_kernel_variance=0.5,
@@ -220,8 +227,8 @@ if __name__ == "__main__":
     font = {"size": LATEX_FONTSIZE}
     matplotlib.rc("font", **font)
     matplotlib.rcParams["text.usetex"] = True
-    matplotlib.rcParams['xtick.labelsize'] = LATEX_FONTSIZE//2 
-    matplotlib.rcParams['ytick.labelsize'] = LATEX_FONTSIZE//2 
+    matplotlib.rcParams["xtick.labelsize"] = LATEX_FONTSIZE // 2
+    matplotlib.rcParams["ytick.labelsize"] = LATEX_FONTSIZE // 2
 
     fig = plt.figure(figsize=(23, 7))
     data_ax = fig.add_subplot(131, frameon=False)
@@ -290,11 +297,10 @@ if __name__ == "__main__":
                 s=500,
                 edgecolor=edgecolors[vv],
                 linewidth=linewidth,
-                label="View {}".format(vv + 1)
+                label="View {}".format(vv + 1),
             )
 
-    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-
+    plt.legend(loc="center left", bbox_to_anchor=(1, 0.5))
 
     plt.tight_layout()
     plt.savefig("../../plots/two_d_toy_example.png")

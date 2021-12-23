@@ -68,7 +68,7 @@ def process_data(adata, n_top_genes=2000):
     adata.var["mt"] = adata.var_names.str.startswith("MT-")
     sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace=True)
 
-    sc.pp.filter_cells(adata, min_counts=1000)  # 1800
+    sc.pp.filter_cells(adata, min_counts=500)  # 1800
     # sc.pp.filter_cells(adata, max_counts=35000)
     # adata = adata[adata.obs["pct_counts_mt"] < 20]
     # sc.pp.filter_genes(adata, min_cells=10)
@@ -203,17 +203,38 @@ data = data[:, gene_names_to_keep]
 
 
 # for ii, gene_name in enumerate(gene_names_to_keep):
+#     if gene_name not in ["Enpp2", "mt-Nd1"]:
+#         continue
+
 #     print(r2_vals_sorted[ii], flush=True)
 #     plt.figure(figsize=(10, 5))
 #     plt.subplot(121)
 #     ax = plt.gca()
-#     sc.pl.spatial(data_slice1, img_key=None, color=[gene_name], spot_size=0.1, ax=ax, show=False)
+#     sc.pl.spatial(
+#         data_slice1,
+#         img_key=None,
+#         color=[gene_name],
+#         spot_size=0.1,
+#         ax=ax,
+#         show=False,
+#         title="Slice 1",
+#     )
 
 #     plt.subplot(122)
 #     ax = plt.gca()
-#     sc.pl.spatial(data_slice2, img_key=None, color=[gene_name], spot_size=0.1, ax=ax, show=False)
+#     sc.pl.spatial(
+#         data_slice2,
+#         img_key=None,
+#         color=[gene_name],
+#         spot_size=0.1,
+#         ax=ax,
+#         show=False,
+#         title="Slice 2",
+#     )
+#     plt.savefig("./out/slideseq_slice_comparison_{}.png".format(gene_name))
 
 #     plt.show()
+# import ipdb; ipdb.set_trace()
 
 
 if N_SAMPLES is not None:

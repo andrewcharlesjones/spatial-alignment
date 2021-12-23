@@ -175,10 +175,10 @@ def two_d_gpsa(
     writervideo = animation.FFMpegWriter(fps=5)
     ani = animation.ArtistAnimation(fig, ims, interval=50, blit=True, repeat_delay=500)
     ani.save(
-            pjoin("out", "alignment_animation.gif"),
-            writer=writervideo,
-            dpi=1000,
-        )
+        pjoin("out", "alignment_animation.gif"),
+        writer=writervideo,
+        dpi=1000,
+    )
     plt.close()
 
 
@@ -193,7 +193,6 @@ if __name__ == "__main__":
         n_latent_gps={"expression": 5},
         fixed_view_idx=0,
     )
-
 
     import ipdb
 

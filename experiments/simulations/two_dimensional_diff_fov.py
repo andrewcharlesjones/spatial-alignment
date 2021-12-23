@@ -48,7 +48,7 @@ def two_d_gpsa_diff_fov(
     n_epochs,
     n_latent_gps,
     warp_kernel_variance=0.1,
-    warp_kernel_lengthscale=10.,
+    warp_kernel_lengthscale=10.0,
     plot_intermediate=True,
     make_plot=False,
 ):
@@ -183,8 +183,8 @@ def two_d_gpsa_diff_fov(
         font = {"size": LATEX_FONTSIZE}
         matplotlib.rc("font", **font)
         matplotlib.rcParams["text.usetex"] = True
-        matplotlib.rcParams['xtick.labelsize'] = LATEX_FONTSIZE//2 
-        matplotlib.rcParams['ytick.labelsize'] = LATEX_FONTSIZE//2 
+        matplotlib.rcParams["xtick.labelsize"] = LATEX_FONTSIZE // 2
+        matplotlib.rcParams["ytick.labelsize"] = LATEX_FONTSIZE // 2
 
         fig = plt.figure(figsize=(23, 7))
         data_ax = fig.add_subplot(131, frameon=False)
@@ -237,9 +237,7 @@ def two_d_gpsa_diff_fov(
                 vmax=maxY,
             )
 
-            curr_aligned_coords = (
-                G_means["expression"].detach().numpy()[curr_idx]
-            )
+            curr_aligned_coords = G_means["expression"].detach().numpy()[curr_idx]
             # aligned_ax.scatter(
             #     curr_aligned_coords[:, 0],
             #     curr_aligned_coords[:, 1],
@@ -280,16 +278,12 @@ def two_d_gpsa_diff_fov(
                     vmax=maxY,
                 )
 
-        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        plt.legend(loc="center left", bbox_to_anchor=(1, 0.5))
         plt.tight_layout()
         plt.savefig("./out/partial_overlap_comparison_alignments.png")
         plt.show()
         plt.close()
 
-            
-            
-
-        
         # plt.figure(figsize=(21, 7))
 
         # viewname_list = []
@@ -395,7 +389,7 @@ if __name__ == "__main__":
         X, Y, G_means, model, err_paste, err_gpsa = two_d_gpsa_diff_fov(
             n_epochs=N_EPOCHS,
             n_outputs=n_outputs,
-            warp_kernel_variance=.1,
+            warp_kernel_variance=0.1,
             warp_kernel_lengthscale=2.5,
             n_latent_gps={"expression": 5},
             make_plot=True if ii == 0 else False,

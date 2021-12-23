@@ -1,22 +1,10 @@
 import torch
 import numpy as np
-import matplotlib.pyplot as plt
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
-import seaborn as sns
-from scipy.stats import multivariate_normal as mvnpy
-
-import sys
-
-sys.path.append("..")
-from util import rbf_kernel
-
-
-# device = "cuda" if torch.cuda.is_available() else "cpu"
-# print("Using {} device".format(device))
+from ..util.util import rbf_kernel
 
 # Define model
-class WarpGP(nn.Module):
+class GPSA(nn.Module):
     def __init__(
         self,
         data_dict,
@@ -31,7 +19,7 @@ class WarpGP(nn.Module):
         fixed_warp_kernel_lengthscales=None,
         fixed_data_kernel_lengthscales=None,
     ):
-        super(WarpGP, self).__init__()
+        super(GPSA, self).__init__()
         self.modality_names = list(data_dict.keys())
         self.n_modalities = len(self.modality_names)
         self.mean_penalty_param = mean_penalty_param

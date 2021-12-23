@@ -86,7 +86,9 @@ def process_data(adata, n_top_genes=2000):
     return adata
 
 
-data_slice1, data_slice2, data_slice3, data_slice4 = load_st_data(layers=np.arange(N_LAYERS) + 1)
+data_slice1, data_slice2, data_slice3, data_slice4 = load_st_data(
+    layers=np.arange(N_LAYERS) + 1
+)
 process_data(data_slice1, n_top_genes=3000)
 process_data(data_slice2, n_top_genes=3000)
 process_data(data_slice3, n_top_genes=3000)
@@ -99,9 +101,7 @@ plt.figure(figsize=(20, 5))
 for ii, curr_slice in enumerate([data_slice1, data_slice2, data_slice3, data_slice4]):
     plt.subplot(1, 4, ii + 1)
     plt.scatter(
-        curr_slice.obsm["spatial"][:, 0],
-        curr_slice.obsm["spatial"][:, 1],
-        s=30
+        curr_slice.obsm["spatial"][:, 0], curr_slice.obsm["spatial"][:, 1], s=30
     )
     plt.title("Slice {}".format(ii + 1), fontsize=30)
     plt.axis("off")
@@ -118,7 +118,6 @@ data = anndata.AnnData.concatenate(data_slice1, data_slice2, data_slice3, data_s
 # plt.scatter(data[data.obs["batch"] == "1"].obsm["spatial"][:, 0], data[data.obs["batch"] == "1"].obsm["spatial"][:, 1])
 # plt.show()
 # import ipdb; ipdb.set_trace()
-
 
 
 shared_gene_names = data.var.gene_ids.index.values
@@ -148,10 +147,17 @@ data = data[:, gene_names_to_keep]
 #     sc.pl.spatial(data_knn, img_key=None, color=[gene_name], spot_size=1)
 
 
-n_samples_list = [data_slice1.shape[0], data_slice2.shape[0], data_slice3.shape[0], data_slice4.shape[0]]
+n_samples_list = [
+    data_slice1.shape[0],
+    data_slice2.shape[0],
+    data_slice3.shape[0],
+    data_slice4.shape[0],
+]
 cumulative_sum = np.cumsum(n_samples_list)
 cumulative_sum = np.insert(cumulative_sum, 0, 0)
-view_idx = [np.arange(cumulative_sum[ii], cumulative_sum[ii + 1]) for ii in range(n_views)]
+view_idx = [
+    np.arange(cumulative_sum[ii], cumulative_sum[ii + 1]) for ii in range(n_views)
+]
 
 X_list = []
 Y_list = []
@@ -253,7 +259,9 @@ for t in range(N_EPOCHS):
 
             if vv == fixed_view_idx:
                 ax1.scatter(curr_X[:, 0], curr_X[:, 1], alpha=0.5, color="black")
-                ax2.scatter(X_list[vv][:, 0], X_list[vv][:, 1], alpha=0.5, color="black")
+                ax2.scatter(
+                    X_list[vv][:, 0], X_list[vv][:, 1], alpha=0.5, color="black"
+                )
 
             ax2.scatter(
                 curr_aligned_coords[view_idx["expression"][vv]][:, 0],

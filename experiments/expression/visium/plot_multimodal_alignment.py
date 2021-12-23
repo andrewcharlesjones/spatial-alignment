@@ -49,89 +49,146 @@ X_histology = pd.read_csv("./out/multimodal/X_histology_visium.csv", index_col=0
 Y_expression = pd.read_csv(
     "./out/multimodal/Y_expression_visium.csv", index_col=0
 ).values
-Y_histology = pd.read_csv("./out/multimodal/Y_histology_rgb_visium.csv", index_col=0).values
+Y_histology = pd.read_csv(
+    "./out/multimodal/Y_histology_rgb_visium.csv", index_col=0
+).values
 
 data = sc.read_h5ad("./out/data_visium.h5")
 
 
-plt.figure(figsize=(10, 5))
+markers = ["o", "X"]
+
+plt.figure(figsize=(12, 10))
 for vv in range(2):
-    plt.subplot(1, 2, vv + 1)
+    plt.subplot(221)
+    plt.title("Unaligned")
+    plt.scatter(
+        X_histology[view_idx_histology[vv]][:, 0],
+        X_histology[view_idx_histology[vv]][:, 1],
+        c=Y_histology[view_idx_histology[vv]],
+        s=30,
+        marker=markers[vv],
+    )
+
+    plt.subplot(222)
+    plt.title("Aligned")
     plt.scatter(
         aligned_coords_histology[view_idx_histology[vv]][:, 0],
         aligned_coords_histology[view_idx_histology[vv]][:, 1],
         c=Y_histology[view_idx_histology[vv]],
-        s=8
+        s=30,
+        marker=markers[vv],
     )
-plt.show()
 
-import ipdb
 
-ipdb.set_trace()
+box_xlims = [8.0, 10.5]
+box_ylims = [4.8, 6.4]
 
-view_idx = []
-for vv in range(2):
-    view_idx.append(np.where(data.obs.batch.values == str(vv))[0])
 
-n_genes = 3
-# plt.figure(figsize=(n_genes * 5 + 5, 10), gridspec_kw={'width_ratios': [2., 1, 1, 1]})
-fig, ax = plt.subplots(
-    2,
-    n_genes + 1,
-    figsize=(n_genes * 5 + 5, 8),
-    gridspec_kw={"width_ratios": [1.1, 1, 1, 1]},
+plt.subplot(221)
+ax = plt.gca()
+rect = patches.Rectangle(
+    (box_xlims[0], box_ylims[0]),
+    box_xlims[1] - box_xlims[0],
+    box_ylims[1] - box_ylims[0],
+    linewidth=2,
+    edgecolor="r",
+    facecolor="none",
 )
+ax.add_patch(rect)
 
-# plt.subplot(2, n_genes + 1, 1)
-plt.sca(ax[0, 0])
-for vv in range(len(data.obs.batch.unique())):
+plt.subplot(222)
+ax = plt.gca()
+rect = patches.Rectangle(
+    (box_xlims[0], box_ylims[0]),
+    box_xlims[1] - box_xlims[0],
+    box_ylims[1] - box_ylims[0],
+    linewidth=2,
+    edgecolor="r",
+    facecolor="none",
+)
+ax.add_patch(rect)
+
+
+in_idx = np.where(
+    (X_histology[:, 0] > box_xlims[0])
+    & (X_histology[:, 0] < box_xlims[1])
+    & (X_histology[:, 1] > box_ylims[0])
+    & (X_histology[:, 1] < box_ylims[1])
+)[0]
+
+for vv in range(2):
+    plt.subplot(223)
+    plt.title("Unaligned")
+    curr_idx = np.intersect1d(in_idx, view_idx_histology[vv])
     plt.scatter(
-        X[view_idx[vv], 0], X[view_idx[vv], 1], s=1, label="View {}".format(vv + 1)
+        X_histology[curr_idx][:, 0],
+        X_histology[curr_idx][:, 1],
+        c=Y_histology[curr_idx],
+        s=100,
+        marker=markers[vv],
+        edgecolors="black" if vv == 1 else None,
+        linewidth=0.5,
+        alpha=0.8,
     )
-lgnd = plt.legend(loc="center right", bbox_to_anchor=(-0.05, 0.5))
-for handle in lgnd.legendHandles:
-    handle.set_sizes([60])
+
+    plt.subplot(224)
+    plt.title("Aligned")
+    plt.scatter(
+        aligned_coords_histology[curr_idx][:, 0],
+        aligned_coords_histology[curr_idx][:, 1],
+        c=Y_histology[curr_idx],
+        s=100,
+        marker=markers[vv],
+        label="Slice {}".format(vv + 1),
+        edgecolors="black" if vv == 1 else None,
+        linewidth=0.5,
+        alpha=0.8,
+    )
+plt.legend(loc="center left", bbox_to_anchor=(1, 0.5))
 plt.tight_layout()
-plt.axis("off")
-
-# plt.subplot(2, n_genes + 1, 5)
-plt.sca(ax[1, 0])
-for vv in range(len(data.obs.batch.unique())):
-    plt.scatter(
-        aligned_coords[view_idx[vv], 0],
-        aligned_coords[view_idx[vv], 1],
-        s=1,
-    )
-plt.axis("off")
+plt.savefig("./out/visium_histology_alignment.png")
+plt.close()
+# plt.show()
 
 
-for gg in range(n_genes):
+diffs = aligned_coords_histology - X_histology
 
-    # plt.subplot(2, n_genes + 1, gg + 2)
-    plt.sca(ax[0, gg + 1])
-    for vv in range(len(data.obs.batch.unique())):
+plt.figure(figsize=(7, 7))
+plt.title("Aligned")
+for vv in range(2):
+
+    curr_idx = np.intersect1d(in_idx, view_idx_histology[vv])
+
+    if vv == 0:
         plt.scatter(
-            X[view_idx[vv], 0],
-            X[view_idx[vv], 1],
-            c=Y[view_idx[vv]][:, gg],
-            s=1,
+            aligned_coords_histology[curr_idx][:, 0],
+            aligned_coords_histology[curr_idx][:, 1],
+            c=Y_histology[curr_idx],
+            s=100,
+            marker=markers[vv],
+            label="Slice {}".format(vv + 1),
+            edgecolors="black" if vv == 1 else None,
+            linewidth=0.5,
+            # alpha=0.8,
         )
-    plt.title(r"$\emph{" + data.var.gene_ids.values[gg] + "}$")
-    plt.axis("off")
-
-    # plt.subplot(2, n_genes + 1, gg + (n_genes + 2) + 1)
-    plt.sca(ax[1, gg + 1])
-    for vv in range(len(data.obs.batch.unique())):
-        plt.scatter(
-            aligned_coords[view_idx[vv], 0],
-            aligned_coords[view_idx[vv], 1],
-            c=Y[view_idx[vv]][:, gg],
-            s=1,
-        )
-    # plt.title(r"$\emph{" + data.var.gene_ids.values[gg] + "}$")
-    plt.axis("off")
-
-plt.savefig("./out/slideseq_alignment_per_gene.png")
+    if vv == 1:
+        for curr_sub_idx in curr_idx:
+            plt.arrow(
+                x=X_histology[curr_sub_idx][0],
+                y=X_histology[curr_sub_idx][1],
+                dx=diffs[curr_sub_idx][0],
+                dy=diffs[curr_sub_idx][1],
+                width=0.02,
+                head_width=0.05,
+                color=Y_histology[curr_sub_idx],
+                edgecolor="black",
+                length_includes_head=True,
+                # color="black",
+                alpha=0.5,
+            )
+plt.tight_layout()
+plt.savefig("./out/visium_histology_alignment_arrows.png")
 plt.show()
 
 

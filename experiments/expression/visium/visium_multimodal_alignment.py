@@ -31,7 +31,7 @@ SCALEFACTOR = 0.17211704
 GRAY_PIXEL_VAL = 0.7
 N_GENES = 10
 
-N_SAMPLES = 2000
+N_SAMPLES = 8000
 
 n_spatial_dims = 2
 n_views = 2
@@ -184,31 +184,36 @@ data = data[:, gene_names_to_keep]
 
 ## Filter number of samples
 if N_SAMPLES is not None:
-    rand_idx = np.random.choice(
-        np.arange(data_slice1.shape[0]), size=N_SAMPLES, replace=False
-    )
-    data_slice1 = data_slice1[rand_idx]
 
-    rand_idx = np.random.choice(
-        np.arange(data_slice1.uns["img_spatial"].shape[0]),
-        size=N_SAMPLES,
-        replace=False,
-    )
-    data_slice1.uns["img_spatial"] = data_slice1.uns["img_spatial"][rand_idx]
-    data_slice1.uns["img_pixels"] = data_slice1.uns["img_pixels"][rand_idx]
+    if N_SAMPLES < data_slice1.shape[0]:
+        rand_idx = np.random.choice(
+            np.arange(data_slice1.shape[0]), size=N_SAMPLES, replace=False
+        )
+        data_slice1 = data_slice1[rand_idx]
 
-    rand_idx = np.random.choice(
-        np.arange(data_slice2.shape[0]), size=N_SAMPLES, replace=False
-    )
-    data_slice2 = data_slice2[rand_idx]
+    if N_SAMPLES < data_slice1.uns["img_spatial"].shape[0]:
+        rand_idx = np.random.choice(
+            np.arange(data_slice1.uns["img_spatial"].shape[0]),
+            size=N_SAMPLES,
+            replace=False,
+        )
+        data_slice1.uns["img_spatial"] = data_slice1.uns["img_spatial"][rand_idx]
+        data_slice1.uns["img_pixels"] = data_slice1.uns["img_pixels"][rand_idx]
 
-    rand_idx = np.random.choice(
-        np.arange(data_slice2.uns["img_spatial"].shape[0]),
-        size=N_SAMPLES,
-        replace=False,
-    )
-    data_slice2.uns["img_spatial"] = data_slice2.uns["img_spatial"][rand_idx]
-    data_slice2.uns["img_pixels"] = data_slice2.uns["img_pixels"][rand_idx]
+    if N_SAMPLES < data_slice2.shape[0]:
+        rand_idx = np.random.choice(
+            np.arange(data_slice2.shape[0]), size=N_SAMPLES, replace=False
+        )
+        data_slice2 = data_slice2[rand_idx]
+
+    if N_SAMPLES < data_slice2.uns["img_spatial"].shape[0]:
+        rand_idx = np.random.choice(
+            np.arange(data_slice2.uns["img_spatial"].shape[0]),
+            size=N_SAMPLES,
+            replace=False,
+        )
+        data_slice2.uns["img_spatial"] = data_slice2.uns["img_spatial"][rand_idx]
+        data_slice2.uns["img_pixels"] = data_slice2.uns["img_pixels"][rand_idx]
 
 data = data_slice1.concatenate(data_slice2)
 data = data[:, gene_names_to_keep]

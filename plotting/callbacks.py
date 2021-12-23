@@ -195,7 +195,7 @@ def callback_twod(
     latent_expression_ax,
     is_mle=False,
     gene_idx=0,
-    s=200
+    s=200,
 ):
 
     if model.fixed_view_idx is not None:
@@ -298,8 +298,6 @@ def callback_twod(
     )
     g.legend_.remove()
     # plt.colorbar()
-
-    
 
     # import ipdb; ipdb.set_trace()
 

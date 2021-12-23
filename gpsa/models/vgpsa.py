@@ -1,27 +1,16 @@
 import torch
 import numpy as np
-import matplotlib.pyplot as plt
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
-
-import seaborn as sns
-from models.gpsa import WarpGP
 from sklearn.cluster import KMeans
-import time
-
-import sys
-
-sys.path.append("..")
-from util import rbf_kernel
+from gpsa import GPSA
+from ..util.util import rbf_kernel
 
 torch.autograd.set_detect_anomaly(True)
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-print("Using {} device".format(device))
 
 
-# Define model
-class VariationalWarpGP(WarpGP):
+class VariationalGPSA(GPSA):
     def __init__(
         self,
         data_dict,
@@ -42,7 +31,7 @@ class VariationalWarpGP(WarpGP):
         fixed_data_kernel_lengthscales=None,
         fixed_view_idx=None,
     ):
-        super(VariationalWarpGP, self).__init__(
+        super(VariationalGPSA, self).__init__(
             data_dict,
             data_init=True,
             n_spatial_dims=2,
@@ -470,19 +459,6 @@ class VariationalWarpGP(WarpGP):
             LL += Y_distribution.log_prob(data_dict[mod]["outputs"]).sum() / S
 
         return -LL + KL_div
-
-
-class VGPRDataset(Dataset):
-    def __init__(self, X, Y):
-        self.X = X
-        self.Y = Y
-        assert X.shape[0] == Y.shape[0]
-
-    def __len__(self):
-        return self.Y.shape[0]
-
-    def __getitem__(self, idx):
-        return {"X": self.X[idx, :], "Y": self.Y[idx]}
 
 
 if __name__ == "__main__":

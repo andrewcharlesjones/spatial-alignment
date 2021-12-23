@@ -131,35 +131,6 @@ data_view1 = data[data.obs["batch"] == "0"]
 data_view2 = data[data.obs["batch"] == "1"]
 
 
-# gpr = GaussianProcessRegressor(kernel=WhiteKernel() + RBF(), normalize_y=True)
-# gpr.fit(data_view1.obsm["spatial"], data_view1.obs["total_counts"].values)
-# xlimits = [xlow, xhigh]
-# ylimits = [ylow, yhigh]
-# grid_size = 40
-# x1s = np.linspace(*xlimits, num=grid_size)
-# x2s = np.linspace(*ylimits, num=grid_size)
-# X1, X2 = np.meshgrid(x1s, x2s)
-# X_grid = np.vstack([X1.ravel(), X2.ravel()]).T
-
-# preds1 = gpr.predict(X_grid)
-
-# gpr = GaussianProcessRegressor(kernel=WhiteKernel() + RBF(), normalize_y=True)
-# gpr.fit(data_view2.obsm["spatial"], data_view2.obs["total_counts"].values)
-# xlimits = [xlow, xhigh]
-# ylimits = [ylow, yhigh]
-# grid_size = 40
-# x1s = np.linspace(*xlimits, num=grid_size)
-# x2s = np.linspace(*ylimits, num=grid_size)
-# X1, X2 = np.meshgrid(x1s, x2s)
-# X_grid = np.vstack([X1.ravel(), X2.ravel()]).T
-
-# preds2 = gpr.predict(X_grid)
-# preds_diff_unaligned = preds2 - preds1
-# ax3.scatter(
-#     X_grid[:, 0], X_grid[:, 1], c=preds_diff_unaligned, marker="s", s=20, cmap="bwr"
-# )
-# ax3.invert_yaxis()
-
 data_view1 = data_view1[
     (data_view1.obsm["spatial"][:, 0] < xhigh)
     & (data_view1.obsm["spatial"][:, 0] > xlow)
@@ -206,46 +177,6 @@ ax3.invert_yaxis()
 data_aligned_view1 = data_aligned[data_aligned.obs["batch"] == "0"]
 data_aligned_view2 = data_aligned[data_aligned.obs["batch"] == "1"]
 
-
-# gpr = GaussianProcessRegressor(kernel=WhiteKernel() + RBF(), normalize_y=True)
-# gpr.fit(
-#     data_aligned_view1.obsm["spatial"], data_aligned_view1.obs["total_counts"].values
-# )
-# xlimits = [xlow, xhigh]
-# ylimits = [ylow, yhigh]
-# grid_size = 40
-# x1s = np.linspace(*xlimits, num=grid_size)
-# x2s = np.linspace(*ylimits, num=grid_size)
-# X1, X2 = np.meshgrid(x1s, x2s)
-# X_grid = np.vstack([X1.ravel(), X2.ravel()]).T
-
-# preds1 = gpr.predict(X_grid)
-
-# gpr = GaussianProcessRegressor(kernel=WhiteKernel() + RBF(), normalize_y=True)
-# gpr.fit(
-#     data_aligned_view2.obsm["spatial"], data_aligned_view2.obs["total_counts"].values
-# )
-# xlimits = [xlow, xhigh]
-# ylimits = [ylow, yhigh]
-# grid_size = 40
-# x1s = np.linspace(*xlimits, num=grid_size)
-# x2s = np.linspace(*ylimits, num=grid_size)
-# X1, X2 = np.meshgrid(x1s, x2s)
-# X_grid = np.vstack([X1.ravel(), X2.ravel()]).T
-
-# preds2 = gpr.predict(X_grid)
-# preds_diff_aligned = preds2 - preds1
-# ax6.scatter(
-#     X_grid[:, 0],
-#     X_grid[:, 1],
-#     c=preds_diff_aligned,
-#     marker="s",
-#     s=20,
-#     vmin=preds_diff_unaligned.min(),
-#     vmax=preds_diff_unaligned.max(),
-#     cmap="bwr",
-# )
-# ax6.invert_yaxis()
 
 data_aligned_view1 = data_aligned_view1[
     (data_aligned_view1.obsm["spatial"][:, 0] < 8)
@@ -295,6 +226,10 @@ plt.legend(loc="center left", bbox_to_anchor=(1, 0.5))
 plt.tight_layout()
 
 plt.savefig("./out/visium_alignment_example.png")
+ax1.set_facecolor("lightgray")
+ax2.set_facecolor("lightgray")
+ax3.set_facecolor("lightgray")
+ax4.set_facecolor("lightgray")
 plt.show()
 
 # import ipdb

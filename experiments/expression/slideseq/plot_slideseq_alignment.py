@@ -36,22 +36,24 @@ data = sc.read_h5ad("./out/data_slideseq.h5")
 
 view_idx = []
 for vv in range(2):
-	view_idx.append(np.where(data.obs.batch.values == str(vv))[0])
+    view_idx.append(np.where(data.obs.batch.values == str(vv))[0])
 
 n_genes = 3
 # plt.figure(figsize=(n_genes * 5 + 5, 10), gridspec_kw={'width_ratios': [2., 1, 1, 1]})
-fig, ax = plt.subplots(2, n_genes + 1, figsize=(n_genes * 5 + 5, 8), gridspec_kw={'width_ratios': [1.1, 1, 1, 1]})
+fig, ax = plt.subplots(
+    2,
+    n_genes + 1,
+    figsize=(n_genes * 5 + 5, 8),
+    gridspec_kw={"width_ratios": [1.1, 1, 1, 1]},
+)
 
 # plt.subplot(2, n_genes + 1, 1)
 plt.sca(ax[0, 0])
 for vv in range(len(data.obs.batch.unique())):
-	plt.scatter(
-		X[view_idx[vv], 0],
-		X[view_idx[vv], 1],
-		s=1,
-		label="View {}".format(vv + 1)
-	)
-lgnd = plt.legend(loc='center right', bbox_to_anchor=(-0.05, 0.5))
+    plt.scatter(
+        X[view_idx[vv], 0], X[view_idx[vv], 1], s=1, label="View {}".format(vv + 1)
+    )
+lgnd = plt.legend(loc="center right", bbox_to_anchor=(-0.05, 0.5))
 for handle in lgnd.legendHandles:
     handle.set_sizes([60])
 plt.tight_layout()
@@ -60,39 +62,39 @@ plt.axis("off")
 # plt.subplot(2, n_genes + 1, 5)
 plt.sca(ax[1, 0])
 for vv in range(len(data.obs.batch.unique())):
-	plt.scatter(
-		aligned_coords[view_idx[vv], 0],
-		aligned_coords[view_idx[vv], 1],
-		s=1,
-	)
+    plt.scatter(
+        aligned_coords[view_idx[vv], 0],
+        aligned_coords[view_idx[vv], 1],
+        s=1,
+    )
 plt.axis("off")
 
 
 for gg in range(n_genes):
 
-	# plt.subplot(2, n_genes + 1, gg + 2)
-	plt.sca(ax[0, gg + 1])
-	for vv in range(len(data.obs.batch.unique())):
-		plt.scatter(
-			X[view_idx[vv], 0],
-			X[view_idx[vv], 1],
-			c=Y[view_idx[vv]][:, gg],
-			s=1,
-		)
-	plt.title(r"$\emph{" + data.var.gene_ids.values[gg] + "}$")
-	plt.axis("off")
+    # plt.subplot(2, n_genes + 1, gg + 2)
+    plt.sca(ax[0, gg + 1])
+    for vv in range(len(data.obs.batch.unique())):
+        plt.scatter(
+            X[view_idx[vv], 0],
+            X[view_idx[vv], 1],
+            c=Y[view_idx[vv]][:, gg],
+            s=1,
+        )
+    plt.title(r"$\emph{" + data.var.gene_ids.values[gg] + "}$")
+    plt.axis("off")
 
-	# plt.subplot(2, n_genes + 1, gg + (n_genes + 2) + 1)
-	plt.sca(ax[1, gg + 1])
-	for vv in range(len(data.obs.batch.unique())):
-		plt.scatter(
-			aligned_coords[view_idx[vv], 0],
-			aligned_coords[view_idx[vv], 1],
-			c=Y[view_idx[vv]][:, gg],
-			s=1,
-		)
-	# plt.title(r"$\emph{" + data.var.gene_ids.values[gg] + "}$")
-	plt.axis("off")
+    # plt.subplot(2, n_genes + 1, gg + (n_genes + 2) + 1)
+    plt.sca(ax[1, gg + 1])
+    for vv in range(len(data.obs.batch.unique())):
+        plt.scatter(
+            aligned_coords[view_idx[vv], 0],
+            aligned_coords[view_idx[vv], 1],
+            c=Y[view_idx[vv]][:, gg],
+            s=1,
+        )
+    # plt.title(r"$\emph{" + data.var.gene_ids.values[gg] + "}$")
+    plt.axis("off")
 
 plt.savefig("./out/slideseq_alignment_per_gene.png")
 plt.show()
