@@ -232,7 +232,7 @@ class VariationalWarpGP(WarpGP):
                 torch.mm(self.Xtilde[vv], self.mean_slopes[vv])
                 + self.mean_intercepts[vv]
             )
-            if self.fixed_view_idx is not None and self.fixed_view_idx == vv:
+            if self.fixed_view_idx is not None and (self.fixed_view_idx == vv or vv in self.fixed_view_idx):
                 self.mu_z_G[vv] *= 100.0
 
         self.Kuu_chol_list = (
@@ -250,18 +250,13 @@ class VariationalWarpGP(WarpGP):
 
         self.curr_Omega_tril_list = torch.cholesky(curr_Omega_G)
 
-        # start = time.time()
-        # import ipdb; ipdb.set_trace()
         for vv in range(self.n_views):
-
             ## If this view is fixed (template-based alignment), then we don't need to sample for it.
-            if self.fixed_view_idx is not None and self.fixed_view_idx == vv:
-                # for jj in range(self.n_spatial_dims):
+            if self.fixed_view_idx is not None and (self.fixed_view_idx == vv or vv in self.fixed_view_idx):
+
                 for mm, mod in enumerate(self.modality_names):
                     observed_X_spatial = X_spatial[mod][view_idx[mod][vv]]
                     G_means[mod][view_idx[mod][vv]] = observed_X_spatial
-
-                    # for ss in range(S):
 
                     G_samples[mod][:, view_idx[mod][vv], :] = observed_X_spatial
 
@@ -431,7 +426,7 @@ class VariationalWarpGP(WarpGP):
 
         ## G
         for vv in range(self.n_views):
-            if vv == self.fixed_view_idx:
+            if self.fixed_view_idx is not None and (self.fixed_view_idx == vv or vv in self.fixed_view_idx):
                 continue
             for jj in range(self.n_spatial_dims):
                 qu = torch.distributions.MultivariateNormal(

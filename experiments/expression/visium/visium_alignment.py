@@ -22,8 +22,10 @@ from util import (
     matern12_kernel,
     rbf_kernel,
 )
-from models.gpsa_vi_lmc import VariationalWarpGP
-from plotting.callbacks import callback_oned, callback_twod, callback_twod_aligned_only
+# from models.gpsa_vi_lmc import VariationalWarpGP
+# from plotting.callbacks import callback_oned, callback_twod, callback_twod_aligned_only
+from gpsa import VariationalGPSA, matern12_kernel, rbf_kernel
+from gpsa.plotting import callback_twod
 
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import WhiteKernel, RBF
@@ -187,7 +189,7 @@ data_dict = {
     }
 }
 
-model = VariationalWarpGP(
+model = VariationalGPSA(
     data_dict,
     n_spatial_dims=n_spatial_dims,
     m_X_per_view=m_X_per_view,

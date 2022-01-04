@@ -8,16 +8,7 @@ import sys
 from os.path import join as pjoin
 import scanpy as sc
 import anndata
-from sklearn.metrics import r2_score, mean_squared_error
 import matplotlib.patches as patches
-
-sys.path.append("../../..")
-sys.path.append("../../../data")
-from plotting.callbacks import callback_oned, callback_twod
-
-from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import WhiteKernel, RBF, Matern
-from sklearn.model_selection import KFold
 
 import matplotlib
 
@@ -33,10 +24,10 @@ X = pd.read_csv("./out/X_slideseq.csv", index_col=0).values
 Y = pd.read_csv("./out/Y_slideseq.csv", index_col=0).values
 data = sc.read_h5ad("./out/data_slideseq.h5")
 
-
 view_idx = []
 for vv in range(2):
     view_idx.append(np.where(data.obs.batch.values == str(vv))[0])
+
 
 n_genes = 3
 # plt.figure(figsize=(n_genes * 5 + 5, 10), gridspec_kw={'width_ratios': [2., 1, 1, 1]})
@@ -47,12 +38,18 @@ fig, ax = plt.subplots(
     gridspec_kw={"width_ratios": [1.1, 1, 1, 1]},
 )
 
+# import ipdb
+
+# ipdb.set_trace()
+
 # plt.subplot(2, n_genes + 1, 1)
 plt.sca(ax[0, 0])
 for vv in range(len(data.obs.batch.unique())):
     plt.scatter(
         X[view_idx[vv], 0], X[view_idx[vv], 1], s=1, label="View {}".format(vv + 1)
     )
+
+# plt.show()
 lgnd = plt.legend(loc="center right", bbox_to_anchor=(-0.05, 0.5))
 for handle in lgnd.legendHandles:
     handle.set_sizes([60])

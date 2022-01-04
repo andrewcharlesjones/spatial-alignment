@@ -12,7 +12,6 @@ import time
 
 sys.path.append("../../..")
 sys.path.append("../../../data")
-from warps import apply_gp_warp
 from util import (
     compute_size_factors,
     poisson_deviance,
@@ -23,7 +22,9 @@ from util import (
     rbf_kernel,
 )
 from models.gpsa_vi_lmc import VariationalWarpGP
-from plotting.callbacks import callback_oned, callback_twod, callback_twod_aligned_only
+
+# from plotting.callbacks import callback_oned, callback_twod, callback_twod_aligned_only
+from gpsa.plotting import callback_oned, callback_twod, callback_twod_aligned_only
 
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import WhiteKernel, RBF
@@ -118,16 +119,16 @@ data_slice2 = process_data(data_slice2, n_top_genes=6000)
 
 
 ## Remove outlier points outside of puck
+MAX_NEIGHBOR_DIST = 700
 knn = NearestNeighbors(n_neighbors=10).fit(data_slice1.obsm["spatial"])
 neighbor_dists, _ = knn.kneighbors(data_slice1.obsm["spatial"])
-inlier_idx = np.where(neighbor_dists[:, -1] < 700)[0]
+inlier_idx = np.where(neighbor_dists[:, -1] < MAX_NEIGHBOR_DIST)[0]
 data_slice1 = data_slice1[inlier_idx]
 
 knn = NearestNeighbors(n_neighbors=10).fit(data_slice2.obsm["spatial"])
 neighbor_dists, _ = knn.kneighbors(data_slice2.obsm["spatial"])
-inlier_idx = np.where(neighbor_dists[:, -1] < 700)[0]
+inlier_idx = np.where(neighbor_dists[:, -1] < MAX_NEIGHBOR_DIST)[0]
 data_slice2 = data_slice2[inlier_idx]
-# import ipdb; ipdb.set_trace()
 
 
 ## Save original data
@@ -234,33 +235,26 @@ data = data[:, gene_names_to_keep]
 #     plt.savefig("./out/slideseq_slice_comparison_{}.png".format(gene_name))
 
 #     plt.show()
-# import ipdb; ipdb.set_trace()
+import ipdb; ipdb.set_trace()
 
 
-if N_SAMPLES is not None:
-    rand_idx = np.random.choice(
-        np.arange(data_slice1.shape[0]), size=N_SAMPLES, replace=False
-    )
-    data_slice1 = data_slice1[rand_idx]
-    rand_idx = np.random.choice(
-        np.arange(data_slice2.shape[0]), size=N_SAMPLES, replace=False
-    )
-    data_slice2 = data_slice2[rand_idx]
+# if N_SAMPLES is not None:
+#     rand_idx = np.random.choice(
+#         np.arange(data_slice1.shape[0]), size=N_SAMPLES, replace=False
+#     )
+#     data_slice1 = data_slice1[rand_idx]
+#     rand_idx = np.random.choice(
+#         np.arange(data_slice2.shape[0]), size=N_SAMPLES, replace=False
+#     )
+#     data_slice2 = data_slice2[rand_idx]
 
 # all_slices = anndata.concat([data_slice1, data_slice2])
-n_samples_list = [data_slice1.shape[0], data_slice2.shape[0]]
-view_idx = [
-    np.arange(data_slice1.shape[0]),
-    np.arange(data_slice1.shape[0], data_slice1.shape[0] + data_slice2.shape[0]),
-]
+n_samples_list = [data[data.obs.batch == str(ii)].shape[0] for ii in range(n_views)]
 
 X1 = np.array(data[data.obs.batch == "0"].obsm["spatial"])
 X2 = np.array(data[data.obs.batch == "1"].obsm["spatial"])
 Y1 = np.array(data[data.obs.batch == "0"].X.todense())
 Y2 = np.array(data[data.obs.batch == "1"].X.todense())
-
-# X1 = scale_spatial_coords(X1)
-# X2 = scale_spatial_coords(X2)
 
 Y1 = (Y1 - Y1.mean(0)) / Y1.std(0)
 Y2 = (Y2 - Y2.mean(0)) / Y2.std(0)
@@ -302,6 +296,7 @@ model = VariationalWarpGP(
 ).to(device)
 
 view_idx, Ns, _, _ = model.create_view_idx_dict(data_dict)
+# import ipdb; ipdb.set_trace()
 
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
 
