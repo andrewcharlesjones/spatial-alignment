@@ -1,5 +1,6 @@
 # Gaussian process spatial alignment (GPSA)
 ![Build Status](https://github.com/andrewcharlesjones/spatial-alignment/actions/workflows/main.yml/badge.svg)
+[![PyPI](https://img.shields.io/pypi/v/gpsa.svg?logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/gpsa/)
 
 This repository contains the code for our paper, [Aligning spatial sequencing data using deep Gaussian processes]().
 
