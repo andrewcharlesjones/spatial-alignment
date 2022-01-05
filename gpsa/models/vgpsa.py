@@ -210,7 +210,7 @@ class VariationalGPSA(GPSA):
             + self.diagonal_offset * torch.eye(Omega_sqt.shape[-1])
         )
 
-    def forward(self, X_spatial, view_idx, Ns, S=1, prediction_mode=False):
+    def forward(self, X_spatial, view_idx, Ns, S=1, prediction_mode=False, G_test=None):
         self.noise_variance_pos = torch.exp(self.noise_variance) + self.diagonal_offset
 
         self.mu_z_G = (
@@ -221,7 +221,7 @@ class VariationalGPSA(GPSA):
                 torch.mm(self.Xtilde[vv], self.mean_slopes[vv])
                 + self.mean_intercepts[vv]
             )
-            if self.fixed_view_idx is not None and self.fixed_view_idx == vv:
+            if self.fixed_view_idx is not None and (self.fixed_view_idx == vv or vv in self.fixed_view_idx):
                 self.mu_z_G[vv] *= 100.0
 
         self.Kuu_chol_list = (
@@ -240,11 +240,10 @@ class VariationalGPSA(GPSA):
         self.curr_Omega_tril_list = torch.cholesky(curr_Omega_G)
 
         # start = time.time()
-        # import ipdb; ipdb.set_trace()
         for vv in range(self.n_views):
 
             ## If this view is fixed (template-based alignment), then we don't need to sample for it.
-            if self.fixed_view_idx is not None and self.fixed_view_idx == vv:
+            if self.fixed_view_idx is not None and (self.fixed_view_idx == vv or vv in self.fixed_view_idx):
                 # for jj in range(self.n_spatial_dims):
                 for mm, mod in enumerate(self.modality_names):
                     observed_X_spatial = X_spatial[mod][view_idx[mod][vv]]
@@ -334,10 +333,6 @@ class VariationalGPSA(GPSA):
                     curr_idx = curr_mod_idx[mm]
                     G_samples[mod][ss, view_idx[mod][vv]] = curr_G_sample[curr_idx]
 
-        # end = time.time()
-        # print("FORWARD 1:", end - start)
-
-        # start = time.time()
         self.curr_Omega_tril_F = {}
         for mod in self.modality_names:
             self.curr_Omega_tril_F[mod] = torch.zeros(
@@ -354,6 +349,17 @@ class VariationalGPSA(GPSA):
             )
             self.F_observed_samples[mod] = torch.zeros([S, Ns[mod], self.Ps[mod]])
 
+        if G_test is not None:
+
+            self.F_latent_samples_test = {}
+            self.F_observed_samples_test = {}
+            for mod in self.modality_names:
+                n_test = G_test[mod].shape[1]
+                self.F_latent_samples_test[mod] = torch.zeros(
+                    [S, n_test, self.n_latent_outputs[mod]]
+                )
+                self.F_observed_samples_test[mod] = torch.zeros([S, n_test, self.Ps[mod]])
+
         kernel_F = lambda x1, x2, diag=False: self.kernel_func_data(
             x1,
             x2,
@@ -367,6 +373,7 @@ class VariationalGPSA(GPSA):
         )
 
         self.Kuu_chol_F = torch.cholesky(Kuu)
+
 
         for mod in self.modality_names:
 
@@ -382,8 +389,8 @@ class VariationalGPSA(GPSA):
             )
 
             Kuf = kernel_F(self.Gtilde, G_samples[mod])
-            # start = time.time()
             curr_Omega = self.get_Omega_from_Omega_sqt(self.Omega_sqt_F_dict[mod])
+
 
             self.curr_Omega_tril_F[mod] = torch.cholesky(curr_Omega)
             mu_tilde, Sigma_tilde = self.compute_mean_and_var(
@@ -410,7 +417,51 @@ class VariationalGPSA(GPSA):
             self.F_latent_samples[mod] = curr_F_latent_samples
             self.F_observed_samples[mod] = F_observed_mean
 
-        return G_means, G_samples, self.F_latent_samples, self.F_observed_samples
+            ## For test samples
+            if G_test is not None:
+                # Kff_diag = (
+                #     kernel_F(G_samples[mod], G_samples[mod], diag=True)
+                #     + self.diagonal_offset
+                # )
+                Kff_diag = torch.ones((G_test[mod].shape[:2])) * torch.exp(
+                    self.data_kernel_variance
+                )
+
+                mu_x_F = torch.zeros([G_test[mod].shape[1], self.n_latent_outputs[mod]])
+
+                Kuf = kernel_F(self.Gtilde, G_test[mod])
+                # curr_Omega = self.get_Omega_from_Omega_sqt(self.Omega_sqt_F_dict[mod])
+
+
+                # self.curr_Omega_tril_F[mod] = torch.cholesky(curr_Omega)
+                mu_tilde, Sigma_tilde = self.compute_mean_and_var(
+                    Kff_diag,
+                    Kuf,
+                    self.Kuu_chol_F,
+                    mu_x_F,
+                    mu_z_F,
+                    self.delta_F_dict[mod],
+                    self.curr_Omega_tril_F[mod],
+                )
+
+                eps = torch.randn(mu_tilde.shape)
+                curr_F_latent_samples = (
+                    mu_tilde + torch.sqrt(torch.transpose(Sigma_tilde, 1, 2)) * eps
+                )
+
+                if self.n_latent_gps[mod] is not None:
+                    curr_W = self.W_dict[mod]
+                    F_observed_mean = torch.matmul(curr_F_latent_samples, curr_W)
+                else:
+                    F_observed_mean = curr_F_latent_samples
+
+                self.F_latent_samples_test[mod] = curr_F_latent_samples
+                self.F_observed_samples_test[mod] = F_observed_mean
+
+        if G_test is not None:
+            return G_means, G_samples, self.F_latent_samples, self.F_observed_samples, self.F_latent_samples_test, self.F_observed_samples_test
+        else:
+            return G_means, G_samples, self.F_latent_samples, self.F_observed_samples
 
     def loss_fn(self, data_dict, F_samples):
         # This is the negative (approximate) ELBO
@@ -420,7 +471,7 @@ class VariationalGPSA(GPSA):
 
         ## G
         for vv in range(self.n_views):
-            if vv == self.fixed_view_idx:
+            if self.fixed_view_idx is not None and (self.fixed_view_idx == vv or vv in self.fixed_view_idx):
                 continue
             for jj in range(self.n_spatial_dims):
                 qu = torch.distributions.MultivariateNormal(

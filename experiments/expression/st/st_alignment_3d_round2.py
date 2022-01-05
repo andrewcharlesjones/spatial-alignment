@@ -10,40 +10,19 @@ import scanpy as sc
 import anndata
 import time
 
-sys.path.append("../../..")
+# sys.path.append("../../..")
 sys.path.append("../../../data")
-from warps import apply_gp_warp
-from util import (
-    compute_size_factors,
-    poisson_deviance,
-    deviance_feature_selection,
-    deviance_residuals,
-    pearson_residuals,
-    matern12_kernel,
-    rbf_kernel,
-)
-# from plotting.callbacks import callback_oned, callback_twod, callback_twod_aligned_only
-from models.gpsa_vi_lmc import VariationalWarpGP
-
-# from plotting.callbacks import callback_oned, callback_twod, callback_twod_aligned_only
-from gpsa.plotting import callback_oned, callback_twod, callback_twod_aligned_only
-
-
-# sys.path.append("../../../data/st/")
 from st.load_st_data import load_st_data
 
-from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import WhiteKernel, RBF
-from scipy.sparse import load_npz
+sys.path.append("../../../gpsa/models")
+# from vgpsa import VariationalGPSA
+# from gpsa import matern12_kernel, rbf_kernel
+from gpsa import VariationalGPSA, matern12_kernel, rbf_kernel
+from gpsa.plotting import callback_oned, callback_twod, callback_twod_aligned_only
 
 ## For PASTE
 import scanpy as sc
 import anndata
-import matplotlib.patches as mpatches
-
-
-sys.path.append("../../../../paste")
-from src.paste import PASTE, visualization
 
 from sklearn.neighbors import NearestNeighbors, KNeighborsRegressor
 from sklearn.metrics import r2_score
@@ -69,7 +48,7 @@ m_X_per_view = 200
 N_LATENT_GPS = {"expression": None}
 
 N_EPOCHS = 5000
-PRINT_EVERY = 1
+PRINT_EVERY = 25
 
 
 def process_data(adata, n_top_genes=2000):
@@ -188,8 +167,6 @@ for vv in range(n_views):
     X_list[vv] = aligned_coords[view_idx[vv]]
 
 
-# import ipdb; ipdb.set_trace()
-
 X = np.concatenate(X_list)
 Y = np.concatenate(Y_list)
 
@@ -210,7 +187,7 @@ data_dict = {
 }
 
 
-model = VariationalWarpGP(
+model = VariationalGPSA(
     data_dict,
     n_spatial_dims=n_spatial_dims,
     m_X_per_view=m_X_per_view,
@@ -232,12 +209,12 @@ view_idx, Ns, _, _ = model.create_view_idx_dict(data_dict)
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
 
 
-def train(model, loss_fn, optimizer):
+def train(model, loss_fn, optimizer, G_test, S=1):
     model.train()
 
     # Forward pass
-    G_means, G_samples, F_latent_samples, F_samples = model.forward(
-        X_spatial={"expression": x}, view_idx=view_idx, Ns=Ns, S=5
+    G_means, G_samples, F_latent_samples, F_samples, F_latent_samples_test, F_samples_test = model.forward(
+        X_spatial={"expression": x}, view_idx=view_idx, Ns=Ns, S=S, G_test=G_test,
     )
 
     # Compute loss
@@ -248,60 +225,60 @@ def train(model, loss_fn, optimizer):
     loss.backward()
     optimizer.step()
 
-    return loss.item(), G_means
+    return loss.item(), G_means, F_samples_test
 
 
 # Set up figure.
-fig = plt.figure(figsize=(10, 5), facecolor="white", constrained_layout=True)
-ax1 = fig.add_subplot(121, frameon=False)
-ax2 = fig.add_subplot(122, frameon=False)
+# fig = plt.figure(figsize=(15, 5), facecolor="white", constrained_layout=True)
+# ax1 = fig.add_subplot(131, frameon=False)
+# ax2 = fig.add_subplot(132, frameon=False)
+# ax3 = fig.add_subplot(133, frameon=False)
+
+n_z_slices = 9
+plt.figure(figsize=(10, 10))
 plt.show(block=False)
 
 
 gene_idx = 0
+S = 5
+
+x1s = np.linspace(*[0, 10], num=20)
+x2s = np.linspace(*[0, 10], num=20)
+x3s = np.linspace(*[0, 3], num=n_z_slices)
+X1grid, X2grid, X3grid = np.meshgrid(x1s, x2s, x3s)
+G_test_numpy = np.vstack([X1grid.ravel(), X2grid.ravel(), X3grid.ravel()]).T
+G_test_numpy  = np.expand_dims(G_test_numpy, 0)
+G_test = {"expression": torch.from_numpy(G_test_numpy).float()}
 
 for t in range(N_EPOCHS):
-    loss, G_means = train(model, model.loss_fn, optimizer)
-    # print(G_means)
-    # import ipdb; ipdb.set_trace()
-    # print(G_means["expression"].detach().numpy()[view_idx["expression"][0]] - X[view_idx["expression"][0]])
+    loss, G_means, F_pred = train(model, model.loss_fn, optimizer, G_test, S=S)
+
 
     if t % PRINT_EVERY == 0:
         print("Iter: {0:<10} LL {1:1.3e}".format(t, -loss), flush=True)
-        ax1.cla()
-        ax2.cla()
 
         curr_aligned_coords = G_means["expression"].detach().numpy()
-        curr_aligned_coords_slice1 = curr_aligned_coords[view_idx["expression"][0]]
-        curr_aligned_coords_slice2 = curr_aligned_coords[view_idx["expression"][1]]
-        curr_aligned_coords_slice3 = curr_aligned_coords[view_idx["expression"][2]]
 
-        for vv, curr_X in enumerate(X_list):
-            ax1.scatter(curr_X[:, 0], curr_X[:, 1], alpha=0.5)
+        F_pred_numpy = F_pred["expression"].detach().numpy()
 
-            if vv == fixed_view_idx:
-                ax1.scatter(curr_X[:, 0], curr_X[:, 1], alpha=0.5, color="black")
-                ax2.scatter(
-                    X_list[vv][:, 0], X_list[vv][:, 1], alpha=0.5, color="black"
-                )
 
-            ax2.scatter(
-                curr_aligned_coords[view_idx["expression"][vv]][:, 0],
-                curr_aligned_coords[view_idx["expression"][vv]][:, 1],
-                alpha=0.5,
-            )
+        for zz in range(n_z_slices):
+            plt.subplot(np.sqrt(n_z_slices).astype(int), np.sqrt(n_z_slices).astype(int), zz + 1)
+            plt.gca().cla()
+            plt.scatter(G_test_numpy.squeeze()[:, 0], G_test_numpy.squeeze()[:, 1], c=F_pred_numpy.squeeze()[:, 0], marker="s")
+            plt.title("Z={}".format(x3s[zz]))
+
 
         plt.draw()
-        plt.savefig("./out/st_alignment.png")
+        # plt.savefig("./out/st_alignment.png")
         plt.pause(1 / 60.0)
-
-        # print(G_means["expression"].detach().numpy()[view_idx["expression"][0]] - X[view_idx["expression"][0]])
-        print(np.allclose(curr_aligned_coords[view_idx["expression"][0]], X[view_idx["expression"][0]]), flush=True)
 
         pd.DataFrame(curr_aligned_coords).to_csv("./out/aligned_coords_st_3d_round2.csv")
         pd.DataFrame(view_idx["expression"]).to_csv("./out/view_idx_st_3d_round2.csv")
         pd.DataFrame(X).to_csv("./out/X_st_3d_round2.csv")
         pd.DataFrame(Y).to_csv("./out/Y_st_3d_round2.csv")
+        pd.DataFrame(G_test_numpy.squeeze()).to_csv("./out/G_test_round2.csv")
+        pd.DataFrame(F_pred_numpy.squeeze()).to_csv("./out/F_pred_round2.csv")
         data.write("./out/data_st_3d_round2.h5")
 
         if model.n_latent_gps["expression"] is not None:
