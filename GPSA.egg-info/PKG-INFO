@@ -1,12 +1,12 @@
 Metadata-Version: 2.1
 Name: gpsa
-Version: 0.2
+Version: 0.3
 Summary: Gaussian Process Spatial Alignment (GPSA)
 Home-page: https://github.com/andrewcharlesjones/spatial-alignment
 Author: Andy Jones
 Author-email: ajones788@gmail.com
 License: UNKNOWN
-Download-URL: https://github.com/andrewcharlesjones/spatial-alignment/archive/refs/tags/v0.2.tar.gz
+Download-URL: https://github.com/andrewcharlesjones/spatial-alignment/archive/refs/tags/v0.3.tar.gz
 Platform: UNKNOWN
 License-File: LICENSE.txt
 

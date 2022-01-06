@@ -17,7 +17,3 @@ gpsa/plotting/__init__.py
 gpsa/plotting/callbacks.py
 gpsa/util/__init__.py
 gpsa/util/util.py
-models/__init__.py
-models/gpsa.py
-models/gpsa_mle.py
-models/gpsa_vi_lmc.py

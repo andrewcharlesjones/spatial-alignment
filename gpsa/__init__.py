@@ -6,4 +6,5 @@ from gpsa.util.util import (
     matern32_kernel,
     polar_warp,
     get_st_coordinates,
+    LossNotDecreasingChecker,
 )

@@ -4,6 +4,7 @@ import torch.nn as nn
 from sklearn.cluster import KMeans
 from gpsa import GPSA
 from ..util.util import rbf_kernel
+from collections.abc import Iterable
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -23,7 +24,7 @@ class VariationalGPSA(GPSA):
         n_noise_variance_params=2,
         kernel_func_warp=rbf_kernel,
         kernel_func_data=rbf_kernel,
-        n_latent_gps=1,
+        n_latent_gps=None,
         mean_function="identity_fixed",
         mean_penalty_param=0.0,
         fixed_warp_kernel_variances=None,
@@ -211,6 +212,10 @@ class VariationalGPSA(GPSA):
         )
 
     def forward(self, X_spatial, view_idx, Ns, S=1, prediction_mode=False, G_test=None):
+
+        if prediction_mode:
+            self.eval()
+
         self.noise_variance_pos = torch.exp(self.noise_variance) + self.diagonal_offset
 
         self.mu_z_G = (
@@ -221,7 +226,11 @@ class VariationalGPSA(GPSA):
                 torch.mm(self.Xtilde[vv], self.mean_slopes[vv])
                 + self.mean_intercepts[vv]
             )
-            if self.fixed_view_idx is not None and (self.fixed_view_idx == vv or vv in self.fixed_view_idx):
+            if self.fixed_view_idx is not None and (
+                vv in self.fixed_view_idx
+                if isinstance(self.fixed_view_idx, Iterable)
+                else self.fixed_view_idx == vv
+            ):
                 self.mu_z_G[vv] *= 100.0
 
         self.Kuu_chol_list = (
@@ -239,17 +248,17 @@ class VariationalGPSA(GPSA):
 
         self.curr_Omega_tril_list = torch.cholesky(curr_Omega_G)
 
-        # start = time.time()
         for vv in range(self.n_views):
 
             ## If this view is fixed (template-based alignment), then we don't need to sample for it.
-            if self.fixed_view_idx is not None and (self.fixed_view_idx == vv or vv in self.fixed_view_idx):
-                # for jj in range(self.n_spatial_dims):
+            if self.fixed_view_idx is not None and (
+                vv in self.fixed_view_idx
+                if isinstance(self.fixed_view_idx, Iterable)
+                else self.fixed_view_idx == vv
+            ):
                 for mm, mod in enumerate(self.modality_names):
                     observed_X_spatial = X_spatial[mod][view_idx[mod][vv]]
                     G_means[mod][view_idx[mod][vv]] = observed_X_spatial
-
-                    # for ss in range(S):
 
                     G_samples[mod][:, view_idx[mod][vv], :] = observed_X_spatial
 
@@ -358,7 +367,9 @@ class VariationalGPSA(GPSA):
                 self.F_latent_samples_test[mod] = torch.zeros(
                     [S, n_test, self.n_latent_outputs[mod]]
                 )
-                self.F_observed_samples_test[mod] = torch.zeros([S, n_test, self.Ps[mod]])
+                self.F_observed_samples_test[mod] = torch.zeros(
+                    [S, n_test, self.Ps[mod]]
+                )
 
         kernel_F = lambda x1, x2, diag=False: self.kernel_func_data(
             x1,
@@ -373,7 +384,6 @@ class VariationalGPSA(GPSA):
         )
 
         self.Kuu_chol_F = torch.cholesky(Kuu)
-
 
         for mod in self.modality_names:
 
@@ -390,7 +400,6 @@ class VariationalGPSA(GPSA):
 
             Kuf = kernel_F(self.Gtilde, G_samples[mod])
             curr_Omega = self.get_Omega_from_Omega_sqt(self.Omega_sqt_F_dict[mod])
-
 
             self.curr_Omega_tril_F[mod] = torch.cholesky(curr_Omega)
             mu_tilde, Sigma_tilde = self.compute_mean_and_var(
@@ -430,10 +439,7 @@ class VariationalGPSA(GPSA):
                 mu_x_F = torch.zeros([G_test[mod].shape[1], self.n_latent_outputs[mod]])
 
                 Kuf = kernel_F(self.Gtilde, G_test[mod])
-                # curr_Omega = self.get_Omega_from_Omega_sqt(self.Omega_sqt_F_dict[mod])
 
-
-                # self.curr_Omega_tril_F[mod] = torch.cholesky(curr_Omega)
                 mu_tilde, Sigma_tilde = self.compute_mean_and_var(
                     Kff_diag,
                     Kuf,
@@ -459,24 +465,34 @@ class VariationalGPSA(GPSA):
                 self.F_observed_samples_test[mod] = F_observed_mean
 
         if G_test is not None:
-            return G_means, G_samples, self.F_latent_samples, self.F_observed_samples, self.F_latent_samples_test, self.F_observed_samples_test
+            return (
+                G_means,
+                G_samples,
+                self.F_latent_samples,
+                self.F_observed_samples,
+                self.F_latent_samples_test,
+                self.F_observed_samples_test,
+            )
         else:
             return G_means, G_samples, self.F_latent_samples, self.F_observed_samples
 
     def loss_fn(self, data_dict, F_samples):
-        # This is the negative (approximate) ELBO
+        # This computes the the negative (approximate) ELBO
 
-        # KL terms
+        # Running sum for KL terms
         KL_div = 0
 
         ## G
         for vv in range(self.n_views):
-            if self.fixed_view_idx is not None and (self.fixed_view_idx == vv or vv in self.fixed_view_idx):
+            if self.fixed_view_idx is not None and (
+                vv in self.fixed_view_idx
+                if isinstance(self.fixed_view_idx, Iterable)
+                else self.fixed_view_idx == vv
+            ):
                 continue
             for jj in range(self.n_spatial_dims):
                 qu = torch.distributions.MultivariateNormal(
                     loc=self.delta_G_list[vv, :, jj],
-                    # scale_tril=self.curr_Omega_tril_list[vv * self.n_views + jj, :, :],
                     scale_tril=self.curr_Omega_tril_list[jj * self.n_views + vv, :, :],
                 )
                 pu = torch.distributions.MultivariateNormal(

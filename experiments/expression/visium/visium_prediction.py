@@ -10,18 +10,8 @@ import scanpy as sc
 import anndata
 from sklearn.metrics import r2_score, mean_squared_error
 
-sys.path.append("../../..")
-sys.path.append("../../../data")
-from util import (
-    compute_size_factors,
-    poisson_deviance,
-    deviance_feature_selection,
-    deviance_residuals,
-    pearson_residuals,
-)
-from util import matern12_kernel, matern32_kernel, rbf_kernel
-from models.gpsa_vi_lmc import VariationalWarpGP
-from plotting.callbacks import callback_oned, callback_twod
+from gpsa import VariationalGPSA, rbf_kernel
+from gpsa.plotting import callback_twod
 
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import WhiteKernel, RBF, Matern
@@ -31,116 +21,133 @@ import scanpy as sc
 import anndata
 import matplotlib.patches as mpatches
 
-sys.path.append("../../../../paste")
-from src.paste import PASTE, visualization
+from sklearn.neighbors import NearestNeighbors, KNeighborsRegressor
+from sklearn.metrics import r2_score
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
-def scale_spatial_coords(X, max_val=10):
+def scale_spatial_coords(X, max_val=10.0):
     X = X - X.min(0)
     X = X / X.max(0)
     return X * max_val
 
-
 DATA_DIR = "../../../data/visium/mouse_brain"
-N_GENES = 100
-N_SAMPLES = 500
-N_REPEATS = 10
-predict_idx = np.arange(10)
-frac_test = 0.2
-frac_train = 1 - frac_test
+N_GENES = 10
+N_SAMPLES = 800
 
 n_spatial_dims = 2
 n_views = 2
-m_G = 40
-m_X_per_view = 40
+m_G = 200
+m_X_per_view = 200
+
+N_LATENT_GPS = {"expression": None}
 
 N_EPOCHS = 2000
-PRINT_EVERY = 50
-N_LATENT_GPS = {"expression": 5}
+PRINT_EVERY = 100
 
-spatial_locs_sample1_path = pjoin(
-    DATA_DIR, "sample1", "filtered_feature_bc_matrix/spatial_locs_small.csv"
-)
-data_sample1_path = pjoin(
-    DATA_DIR, "sample1", "filtered_feature_bc_matrix/gene_expression_small.csv"
-)
-X_df_sample1 = pd.read_csv(spatial_locs_sample1_path, index_col=0)
-X_orig1 = np.vstack([X_df_sample1.array_col.values, X_df_sample1.array_row.values]).T
-X_orig1 = scale_spatial_coords(X_orig1)
-slice1 = sc.read_csv(data_sample1_path)
-slice1.obsm["spatial"] = X_orig1
-sc.pp.filter_genes(slice1, min_counts=15)
-sc.pp.filter_cells(slice1, min_counts=100)
+FRAC_TEST = 0.2
+N_REPEATS = 10
 
-spatial_locs_sample2_path = pjoin(
-    DATA_DIR, "sample2", "filtered_feature_bc_matrix/spatial_locs_small.csv"
-)
-data_sample2_path = pjoin(
-    DATA_DIR, "sample2", "filtered_feature_bc_matrix/gene_expression_small.csv"
-)
-X_df_sample2 = pd.read_csv(spatial_locs_sample2_path, index_col=0)
-X_orig2 = np.vstack([X_df_sample2.array_col.values, X_df_sample2.array_row.values]).T
-X_orig2 = scale_spatial_coords(X_orig2)
-slice2 = sc.read_csv(data_sample2_path)
-slice2.obsm["spatial"] = X_orig2
-sc.pp.filter_genes(slice2, min_counts=15)
-sc.pp.filter_cells(slice2, min_counts=100)
+
+def process_data(adata, n_top_genes=2000):
+    adata.var_names_make_unique()
+    adata.var["mt"] = adata.var_names.str.startswith("MT-")
+    sc.pp.calculate_qc_metrics(adata, qc_vars=["mt"], inplace=True)
+
+    sc.pp.filter_cells(adata, min_counts=5000)
+    sc.pp.filter_cells(adata, max_counts=35000)
+    # adata = adata[adata.obs["pct_counts_mt"] < 20]
+    sc.pp.filter_genes(adata, min_cells=10)
+
+    sc.pp.normalize_total(adata, inplace=True)
+    sc.pp.log1p(adata)
+    sc.pp.highly_variable_genes(
+        adata, flavor="seurat", n_top_genes=n_top_genes, subset=True
+    )
+    return adata
+
+
+data_slice1 = sc.read_visium(pjoin(DATA_DIR, "sample1"))
+data_slice1 = process_data(data_slice1, n_top_genes=6000)
+
+data_slice2 = sc.read_visium(pjoin(DATA_DIR, "sample2"))
+data_slice2 = process_data(data_slice2, n_top_genes=6000)
+
+data = data_slice1.concatenate(data_slice2)
+
+
+shared_gene_names = data.var.gene_ids.index.values
+data_knn = data_slice1[:, shared_gene_names]
+X_knn = data_knn.obsm["spatial"]
+Y_knn = np.array(data_knn.X.todense())  # [:, :1000]
+nbrs = NearestNeighbors(n_neighbors=2).fit(X_knn)
+distances, indices = nbrs.kneighbors(X_knn)
+
+preds = Y_knn[indices[:, 1]]
+r2_vals = r2_score(Y_knn, preds, multioutput="raw_values")
+
+
+gene_idx_to_keep = np.where(r2_vals > 0.3)[0]
+N_GENES = min(N_GENES, len(gene_idx_to_keep))
+gene_names_to_keep = data_knn.var.gene_ids.index.values[gene_idx_to_keep]
+gene_names_to_keep = gene_names_to_keep[np.argsort(-r2_vals[gene_idx_to_keep])]
+if N_GENES < len(gene_names_to_keep):
+    gene_names_to_keep = gene_names_to_keep[:N_GENES]
+data = data[:, gene_names_to_keep]
+
+if N_SAMPLES is not None:
+    # rand_idx = np.random.choice(
+    #     np.arange(data_slice1.shape[0]), size=N_SAMPLES, replace=False
+    # )
+    # data_slice1 = data_slice1[rand_idx]
+    # rand_idx = np.random.choice(
+    #     np.arange(data_slice2.shape[0]), size=N_SAMPLES, replace=False
+    # )
+    # data_slice2 = data_slice2[rand_idx]
+    rand_idx = np.random.choice(
+        np.arange(data.shape[0]), size=N_SAMPLES * 2, replace=False
+    )
+    data = data[rand_idx]
+
+# all_slices = anndata.concat([data_slice1, data_slice2])
+data_slice1 = data[data.obs.batch == "0"]
+data_slice2 = data[data.obs.batch == "1"]
+
+n_samples_list = [data_slice1.shape[0], data_slice2.shape[0]]
+view_idx = [
+    np.arange(data_slice1.shape[0]),
+    np.arange(data_slice1.shape[0], data_slice1.shape[0] + data_slice2.shape[0]),
+]
+
+X1 = data[data.obs.batch == "0"].obsm["spatial"]
+X2 = data[data.obs.batch == "1"].obsm["spatial"]
+Y1 = np.array(data[data.obs.batch == "0"].X.todense())
+Y2 = np.array(data[data.obs.batch == "1"].X.todense())
+
+X1 = scale_spatial_coords(X1)
+X2 = scale_spatial_coords(X2)
+
+Y1 = (Y1 - Y1.mean(0)) / Y1.std(0)
+Y2 = (Y2 - Y2.mean(0)) / Y2.std(0)
+
+X = np.concatenate([X1, X2])
+Y = np.concatenate([Y1, Y2])
 
 errors_union, errors_separate, errors_gpsa = [], [], []
 
 for repeat_idx in range(N_REPEATS):
 
-    rand_idx = np.random.choice(
-        np.arange(slice1.shape[0]), size=N_SAMPLES, replace=False
-    )
-    slice1 = slice1[rand_idx]
-    rand_idx = np.random.choice(
-        np.arange(slice2.shape[0]), size=N_SAMPLES, replace=False
-    )
-    slice2 = slice2[rand_idx]
-
-    all_slices = anndata.concat([slice1, slice2])
-    n_samples_list = [slice1.shape[0], slice2.shape[0]]
-    view_idx = [
-        np.arange(slice1.shape[0]),
-        np.arange(slice1.shape[0], slice1.shape[0] + slice2.shape[0]),
-    ]
-
-    deviances, gene_names = deviance_feature_selection(all_slices.to_df().transpose())
-    sorted_idx = np.argsort(-deviances)
-    highly_variable_genes = gene_names[sorted_idx][:N_GENES]
-
-    # highly_variable_genes = gene_names[sorted_idx][1:4]
-    all_slices = all_slices[:, highly_variable_genes]
-
-    X1 = all_slices.obsm["spatial"][: slice1.shape[0]]
-    X2 = all_slices.obsm["spatial"][slice1.shape[0] :]
-    Y1_unnormalized = all_slices.X[: slice1.shape[0]]
-    Y2_unnormalized = all_slices.X[slice1.shape[0] :]
-    Y1 = pearson_residuals(np.array(Y1_unnormalized), theta=100.0)
-    Y2 = pearson_residuals(np.array(Y2_unnormalized), theta=100.0)
-
-    Y1 = (Y1 - Y1.mean(0)) / Y1.std(0)
-    Y2 = (Y2 - Y2.mean(0)) / Y2.std(0)
-
-    X = np.concatenate([X1, X2])
-    Y = np.concatenate([Y1, Y2])
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    n_outputs = all_slices.shape[1]
-
     ## Drop part of the second view (this is the part we'll try to predict)
     second_view_idx = view_idx[1]
-    n_drop = int(1.0 * view_idx[1].shape[0] // (1 / frac_test))
+    n_drop = int(1.0 * n_samples_list[1] * FRAC_TEST)
     test_idx = np.random.choice(second_view_idx, size=n_drop, replace=False)
     keep_idx = np.setdiff1d(second_view_idx, test_idx)
 
-    train_idx = np.concatenate([np.arange(view_idx[0].shape[0]), keep_idx])
+    train_idx = np.concatenate([np.arange(n_samples_list[0]), keep_idx])
 
     X_train = X[train_idx]
     Y_train = Y[train_idx]
-    n_samples_list_train = n_samples_list
+    n_samples_list_train = n_samples_list.copy()
     n_samples_list_train[1] -= n_drop
 
     n_samples_list_test = [[0], [n_drop]]
@@ -168,8 +175,9 @@ for repeat_idx in range(N_REPEATS):
             "n_samples_list": n_samples_list_test,
         }
     }
+    # import ipdb; ipdb.set_trace()
 
-    model = VariationalWarpGP(
+    model = VariationalGPSA(
         data_dict_train,
         n_spatial_dims=n_spatial_dims,
         m_X_per_view=m_X_per_view,
@@ -178,13 +186,12 @@ for repeat_idx in range(N_REPEATS):
         minmax_init=False,
         grid_init=False,
         n_latent_gps=N_LATENT_GPS,
-        kernel_func_warp=rbf_kernel,
-        kernel_func_data=matern32_kernel,
         mean_function="identity_fixed",
-        fixed_warp_kernel_variances=np.ones(n_views) * 0.1,
-        fixed_warp_kernel_lengthscales=np.ones(n_views) * 10,
-        # mean_function="identity_initialized",
-        # fixed_view_idx=0,
+        kernel_func_warp=rbf_kernel,
+        kernel_func_data=rbf_kernel,
+        # fixed_warp_kernel_variances=np.ones(n_views) * 1.,
+        # fixed_warp_kernel_lengthscales=np.ones(n_views) * 10,
+        fixed_view_idx=0,
     ).to(device)
 
     view_idx_train, Ns_train, _, _ = model.create_view_idx_dict(data_dict_train)
@@ -192,65 +199,38 @@ for repeat_idx in range(N_REPEATS):
 
     ## Make predictions for naive alignment
     gpr_union = GaussianProcessRegressor(kernel=RBF() + WhiteKernel())
-
-    # gpr_union.fit(X=X_train, y=Y_train[:, predict_idx])
-    half_n_samples_train = int((N_SAMPLES * frac_train) // 2)
-    gpr_union.fit(
-        X=X_train[
-            np.concatenate(
-                [
-                    np.arange(0, half_n_samples_train),
-                    np.arange(N_SAMPLES, N_SAMPLES + half_n_samples_train),
-                ]
-            )
-        ],
-        y=Y_train[
-            np.concatenate(
-                [
-                    np.arange(0, half_n_samples_train),
-                    np.arange(N_SAMPLES, N_SAMPLES + half_n_samples_train),
-                ]
-            )
-        ][:, predict_idx],
-    )
+    gpr_union.fit(X=X_train, y=Y_train)
     preds = gpr_union.predict(X_test)
-    error_union = np.mean(np.sum((preds - Y_test[:, predict_idx]) ** 2, 1))
+    error_union = np.mean(np.sum((preds - Y_test) ** 2, axis=1))
+    errors_union.append(error_union)
+    print("MSE, union: {}".format(round(error_union, 5)), flush=True)
+    # r2_union = r2_score(Y_test, preds)
+    # print("R2, union: {}".format(round(r2_union, 5)))
 
-    print("MSE, union: {}".format(round(error_union, 5)))
-
-    curr_r2 = r2_score(Y_test[:, predict_idx], preds)
-    print("R2, union: {}".format(round(curr_r2, 5)), flush=True)
-
-    errors_union.append(curr_r2)
 
     ## Make predictons for each view separately
     preds, truth = [], []
 
     for vv in range(n_views):
-        gpr_separate = GaussianProcessRegressor(kernel=Matern(nu=1.5) + WhiteKernel())
+        gpr_separate = GaussianProcessRegressor(kernel=RBF() + WhiteKernel())
         curr_trainX = X_train[view_idx_train["expression"][vv]]
         curr_trainY = Y_train[view_idx_train["expression"][vv]]
         curr_testX = X_test[view_idx_test["expression"][vv]]
         curr_testY = Y_test[view_idx_test["expression"][vv]]
         if len(curr_testX) == 0:
             continue
-        gpr_separate.fit(X=curr_trainX, y=curr_trainY[:, predict_idx])
+        gpr_separate.fit(X=curr_trainX, y=curr_trainY)
         curr_preds = gpr_separate.predict(curr_testX)
         preds.append(curr_preds)
-        truth.append(curr_testY[:, predict_idx])
+        truth.append(curr_testY)
 
     preds = np.concatenate(preds, axis=0)
     truth = np.concatenate(truth, axis=0)
-    error_separate = np.mean(np.sum((preds - truth) ** 2, 1))
-
-    print("MSE, separate: {}".format(round(error_separate, 5)))
-    # preds = gpr_union.predict(X_test)
-
-    curr_r2 = r2_score(truth, preds)
-    print("R2, separate: {}".format(round(curr_r2, 5)), flush=True)
-    errors_separate.append(curr_r2)
-
-    # import ipdb; ipdb.set_trace()
+    error_separate = np.mean(np.sum((preds - truth) ** 2, axis=1))
+    errors_separate.append(error_separate)
+    print("MSE, separate: {}".format(round(error_separate, 5)), flush=True)
+    # r2_sep = r2_score(truth, preds)
+    # print("R2, sep: {}".format(round(r2_sep, 5)))
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
 
@@ -259,10 +239,7 @@ for repeat_idx in range(N_REPEATS):
 
         # Forward pass
         G_means, G_samples, F_latent_samples, F_samples = model.forward(
-            X_spatial={"expression": x_train},
-            view_idx=view_idx_train,
-            Ns=Ns_train,
-            S=10,
+            X_spatial={"expression": x_train}, view_idx=view_idx_train, Ns=Ns_train, S=3
         )
 
         # Compute loss
@@ -276,22 +253,20 @@ for repeat_idx in range(N_REPEATS):
         return loss.item(), G_means
 
     # Set up figure.
-    # fig = plt.figure(figsize=(14, 7), facecolor="white", constrained_layout=True)
-    # ax_dict = fig.subplot_mosaic(
-    #     [
-    #         ["data", "latent"],
-    #     ],
-    # )
-    # plt.show(block=False)
+    fig = plt.figure(figsize=(18, 7), facecolor="white", constrained_layout=True)
+    data_expression_ax = fig.add_subplot(131, frameon=False)
+    latent_expression_ax = fig.add_subplot(132, frameon=False)
+    prediction_ax = fig.add_subplot(133, frameon=False)
+
+    plt.show(block=False)
 
     for t in range(N_EPOCHS):
         loss, G_means = train(model, model.loss_fn, optimizer)
 
         if t % PRINT_EVERY == 0:
             print("Iter: {0:<10} LL {1:1.3e}".format(t, -loss))
-            # print(model.warp_kernel_variances.detach().numpy())
 
-            G_means_test, _, F_samples_test, _, = model.forward(
+            G_means_test, _, _, F_samples_test, = model.forward(
                 X_spatial={"expression": x_test},
                 view_idx=view_idx_test,
                 Ns=Ns_test,
@@ -299,77 +274,44 @@ for repeat_idx in range(N_REPEATS):
                 S=10,
             )
 
-            curr_preds = (
-                torch.mean(F_samples_test["expression"], dim=0).detach().numpy()
+            curr_preds = torch.mean(F_samples_test["expression"], dim=0)
+
+            callback_twod(
+                model,
+                X_train,
+                Y_train,
+                data_expression_ax=data_expression_ax,
+                latent_expression_ax=latent_expression_ax,
+                # prediction_ax=ax_dict["preds"],
+                X_aligned=G_means,
+                # X_test=X_test,
+                # Y_test_true=Y_test,
+                # Y_pred=curr_preds,
+                # X_test_aligned=G_means_test,
             )
+            plt.draw()
+            plt.pause(1 / 60.0)
 
-            # callback_twod(
-            #     model,
-            #     X_train,
-            #     Y_train,
-            #     data_expression_ax=ax_dict["data"],
-            #     latent_expression_ax=ax_dict["latent"],
-            #     # prediction_ax=ax_dict["preds"],
-            #     X_aligned=G_means,
-            #     # X_test=X_test,
-            #     # Y_test_true=Y_test,
-            #     # Y_pred=curr_preds,
-            #     # X_test_aligned=G_means_test,
-            # )
-            # plt.draw()
-            # plt.pause(1./60)
-
-            # print("R2, GPSA: {}".format(round(r2_score(Y_test, curr_preds), 5)))
+            error_gpsa = np.mean(
+                np.sum((Y_test - curr_preds.detach().numpy()) ** 2, axis=1)
+            )
+            # print("MSE, GPSA: {}".format(round(error_gpsa, 5)), flush=True)
+            # r2_gpsa = r2_score(Y_test, curr_preds.detach().numpy())
+            # print("R2, GPSA: {}".format(round(r2_gpsa, 5)))
 
             curr_aligned_coords = G_means["expression"].detach().numpy()
             curr_aligned_coords_test = G_means_test["expression"].detach().numpy()
 
             try:
                 gpr_gpsa = GaussianProcessRegressor(kernel=RBF() + WhiteKernel())
-                fit_idx = np.concatenate(
-                    [
-                        np.arange(0, half_n_samples_train),
-                        np.arange(N_SAMPLES, N_SAMPLES + half_n_samples_train),
-                    ]
-                )
-                # import ipdb; ipdb.set_trace()
-                gpr_gpsa.fit(
-                    X=curr_aligned_coords[fit_idx], y=Y_train[fit_idx][:, predict_idx]
-                )
+                gpr_gpsa.fit(X=curr_aligned_coords, y=Y_train)
                 preds = gpr_gpsa.predict(curr_aligned_coords_test)
-                # import ipdb; ipdb.set_trace()
-                error_gpsa = np.mean(
-                    np.sum((preds - Y_test[:, predict_idx]) ** 2, axis=1)
-                )
-                # print("MSE, GPSA GPR: {}".format(round(error_gpsa, 5)))
-
-                curr_r2 = r2_score(Y_test[:, predict_idx], preds)
-                print("R2, GPSA: {}".format(round(curr_r2, 5)), flush=True)
-                # print("R2, GPSA: {}".format(round(curr_r2, 5)))
+                error_gpsa = np.mean(np.sum((preds - Y_test) ** 2, axis=1))
+                print("MSE, GPSA GPR: {}".format(round(error_gpsa, 5)), flush=True)
             except:
                 continue
 
-    try:
-        G_means_test, _, F_samples_test, _, = model.forward(
-            X_spatial={"expression": x_test},
-            view_idx=view_idx_test,
-            Ns=Ns_test,
-            prediction_mode=True,
-            S=10,
-        )
-
-        gpr_gpsa = GaussianProcessRegressor(kernel=RBF() + WhiteKernel())
-        gpr_gpsa.fit(X=curr_aligned_coords, y=Y_train)
-        preds = gpr_gpsa.predict(curr_aligned_coords_test)
-        error_gpsa = np.mean(np.sum((preds - Y_test) ** 2, axis=1))
-        print("MSE, GPSA GPR: {}".format(round(error_gpsa, 5)))
-
-        curr_r2 = r2_score(Y_test, preds)
-        print("R2, GPSA: {}".format(round(curr_r2, 5)), flush=True)
-    except:
-        pass
-
-    errors_gpsa.append(curr_r2)
+    errors_gpsa.append(error_gpsa)
 
     plt.close()
 
@@ -381,14 +323,19 @@ for repeat_idx in range(N_REPEATS):
         }
     )
     results_df_melted = pd.melt(results_df)
-    results_df_melted.to_csv("./out/prediction_comparison_visium.csv")
+    results_df_melted.to_csv("./out/twod_prediction_visium.csv")
 
     plt.figure(figsize=(7, 5))
     sns.boxplot(data=results_df_melted, x="variable", y="value", color="gray")
     plt.xlabel("")
-    plt.ylabel("R^2")
-    plt.title("Visium")
+    plt.ylabel("MSE")
     plt.tight_layout()
-    plt.savefig("./out/two_d_prediction_comparison_visium.png")
+    plt.savefig("./out/two_d_prediction_visium.png")
     # plt.show()
     plt.close()
+
+
+    # import ipdb; ipdb.set_trace()
+
+
+

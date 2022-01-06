@@ -156,7 +156,9 @@ for vv in range(n_views):
 
 for vv in range(n_views):
     curr_X = X_list[vv]
-    curr_X = np.concatenate([curr_X, np.ones(curr_X.shape[0]).reshape(-1, 1) * vv], axis=1)
+    curr_X = np.concatenate(
+        [curr_X, np.ones(curr_X.shape[0]).reshape(-1, 1) * vv], axis=1
+    )
     X_list[vv] = curr_X
 
 
@@ -213,8 +215,19 @@ def train(model, loss_fn, optimizer, G_test, S=1):
     model.train()
 
     # Forward pass
-    G_means, G_samples, F_latent_samples, F_samples, F_latent_samples_test, F_samples_test = model.forward(
-        X_spatial={"expression": x}, view_idx=view_idx, Ns=Ns, S=S, G_test=G_test,
+    (
+        G_means,
+        G_samples,
+        F_latent_samples,
+        F_samples,
+        F_latent_samples_test,
+        F_samples_test,
+    ) = model.forward(
+        X_spatial={"expression": x},
+        view_idx=view_idx,
+        Ns=Ns,
+        S=S,
+        G_test=G_test,
     )
 
     # Compute loss
@@ -247,12 +260,11 @@ x2s = np.linspace(*[0, 10], num=20)
 x3s = np.linspace(*[0, 3], num=n_z_slices)
 X1grid, X2grid, X3grid = np.meshgrid(x1s, x2s, x3s)
 G_test_numpy = np.vstack([X1grid.ravel(), X2grid.ravel(), X3grid.ravel()]).T
-G_test_numpy  = np.expand_dims(G_test_numpy, 0)
+G_test_numpy = np.expand_dims(G_test_numpy, 0)
 G_test = {"expression": torch.from_numpy(G_test_numpy).float()}
 
 for t in range(N_EPOCHS):
     loss, G_means, F_pred = train(model, model.loss_fn, optimizer, G_test, S=S)
-
 
     if t % PRINT_EVERY == 0:
         print("Iter: {0:<10} LL {1:1.3e}".format(t, -loss), flush=True)
@@ -261,19 +273,26 @@ for t in range(N_EPOCHS):
 
         F_pred_numpy = F_pred["expression"].detach().numpy()
 
-
         for zz in range(n_z_slices):
-            plt.subplot(np.sqrt(n_z_slices).astype(int), np.sqrt(n_z_slices).astype(int), zz + 1)
+            plt.subplot(
+                np.sqrt(n_z_slices).astype(int), np.sqrt(n_z_slices).astype(int), zz + 1
+            )
             plt.gca().cla()
-            plt.scatter(G_test_numpy.squeeze()[:, 0], G_test_numpy.squeeze()[:, 1], c=F_pred_numpy.squeeze()[:, 0], marker="s")
+            plt.scatter(
+                G_test_numpy.squeeze()[:, 0],
+                G_test_numpy.squeeze()[:, 1],
+                c=F_pred_numpy.squeeze()[:, 0],
+                marker="s",
+            )
             plt.title("Z={}".format(x3s[zz]))
-
 
         plt.draw()
         # plt.savefig("./out/st_alignment.png")
         plt.pause(1 / 60.0)
 
-        pd.DataFrame(curr_aligned_coords).to_csv("./out/aligned_coords_st_3d_round2.csv")
+        pd.DataFrame(curr_aligned_coords).to_csv(
+            "./out/aligned_coords_st_3d_round2.csv"
+        )
         pd.DataFrame(view_idx["expression"]).to_csv("./out/view_idx_st_3d_round2.csv")
         pd.DataFrame(X).to_csv("./out/X_st_3d_round2.csv")
         pd.DataFrame(Y).to_csv("./out/Y_st_3d_round2.csv")

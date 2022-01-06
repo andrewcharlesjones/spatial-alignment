@@ -22,6 +22,7 @@ from util import (
     matern12_kernel,
     rbf_kernel,
 )
+
 # from plotting.callbacks import callback_oned, callback_twod, callback_twod_aligned_only
 from models.gpsa_vi_lmc import VariationalWarpGP
 
@@ -177,7 +178,9 @@ for vv in range(n_views):
 
 for vv in range(n_views):
     curr_X = X_list[vv]
-    curr_X = np.concatenate([curr_X, np.ones(curr_X.shape[0]).reshape(-1, 1) * vv], axis=1)
+    curr_X = np.concatenate(
+        [curr_X, np.ones(curr_X.shape[0]).reshape(-1, 1) * vv], axis=1
+    )
     X_list[vv] = curr_X
 
 

@@ -72,7 +72,7 @@ def two_d_gpsa(
         )
     plt.xlabel("X1")
     plt.ylabel("X2")
-    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.legend(loc="center left", bbox_to_anchor=(1, 0.5))
     plt.tight_layout()
     plt.savefig("./../../examples/synthetic_data_example.png")
     plt.close()

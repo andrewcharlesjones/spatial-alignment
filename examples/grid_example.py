@@ -58,6 +58,7 @@ view_idx, Ns, _, _ = model.create_view_idx_dict(data_dict)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
 
+
 def train(model, loss_fn, optimizer):
     model.train()
 
@@ -76,6 +77,7 @@ def train(model, loss_fn, optimizer):
 
     return loss.item()
 
+
 # Set up figure.
 fig = plt.figure(figsize=(14, 7), facecolor="white", constrained_layout=True)
 data_expression_ax = fig.add_subplot(121, frameon=False)
@@ -87,9 +89,7 @@ for t in range(N_EPOCHS):
 
     if t % PRINT_EVERY == 0:
         print("Iter: {0:<10} LL {1:1.3e}".format(t, -loss))
-        G_means, _, _, _ = model.forward(
-            {"expression": x}, view_idx=view_idx, Ns=Ns
-        )
+        G_means, _, _, _ = model.forward({"expression": x}, view_idx=view_idx, Ns=Ns)
 
         callback_twod(
             model,
@@ -106,4 +106,3 @@ for t in range(N_EPOCHS):
 print("Done!")
 
 plt.close()
-

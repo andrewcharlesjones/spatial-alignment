@@ -235,7 +235,9 @@ data = data[:, gene_names_to_keep]
 #     plt.savefig("./out/slideseq_slice_comparison_{}.png".format(gene_name))
 
 #     plt.show()
-import ipdb; ipdb.set_trace()
+import ipdb
+
+ipdb.set_trace()
 
 
 # if N_SAMPLES is not None:

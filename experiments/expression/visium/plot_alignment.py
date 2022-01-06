@@ -13,7 +13,8 @@ import matplotlib.patches as patches
 
 sys.path.append("../../..")
 sys.path.append("../../../data")
-from plotting.callbacks import callback_oned, callback_twod
+# from plotting.callbacks import callback_oned, callback_twod
+from gpsa.plotting import callback_oned, callback_twod
 
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import WhiteKernel, RBF, Matern
@@ -69,11 +70,11 @@ ylow = 1.1
 yhigh = 2.3
 
 
-fig = plt.figure(figsize=(12, 8), facecolor="white", constrained_layout=True)
-ax1 = fig.add_subplot(221, frameon=False)
-ax2 = fig.add_subplot(222, frameon=False)
-ax3 = fig.add_subplot(223, frameon=False)
-ax4 = fig.add_subplot(224, frameon=False)
+fig = plt.figure(figsize=(24, 5), facecolor="white", constrained_layout=True)
+ax1 = fig.add_subplot(141, frameon=False)
+ax2 = fig.add_subplot(142, frameon=False)
+ax3 = fig.add_subplot(143, frameon=False)
+ax4 = fig.add_subplot(144, frameon=False)
 # ax5 = fig.add_subplot(235, frameon=False)
 # ax6 = fig.add_subplot(236, frameon=False)
 
@@ -172,6 +173,7 @@ ax3.scatter(
     linewidth=2,
 )
 ax3.invert_yaxis()
+ax3.set_title("Unaligned")
 
 
 data_aligned_view1 = data_aligned[data_aligned.obs["batch"] == "0"]
@@ -219,6 +221,7 @@ ax4.scatter(
     linewidth=2,
 )
 ax4.invert_yaxis()
+ax4.set_title("Aligned")
 
 
 plt.legend(loc="center left", bbox_to_anchor=(1, 0.5))

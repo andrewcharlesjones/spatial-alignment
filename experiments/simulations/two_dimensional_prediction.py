@@ -8,14 +8,13 @@ from sklearn.metrics import r2_score
 import seaborn as sns
 import sys
 
-sys.path.append("../..")
-from models.gpsa_vi_lmc import VariationalWarpGP
+from gpsa import VariationalGPSA
 
 sys.path.append("../../data")
 from simulated.generate_twod_data import (
     generate_twod_data,
 )
-from plotting.callbacks import callback_twod
+from gpsa.plotting import callback_twod
 
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import WhiteKernel, RBF
@@ -105,14 +104,14 @@ for repeat_idx in range(N_REPEATS):
         }
     }
 
-    model = VariationalWarpGP(
+    model = VariationalGPSA(
         data_dict_train,
         n_spatial_dims=n_spatial_dims,
         m_X_per_view=m_X_per_view,
         m_G=m_G,
-        data_init=False,
+        data_init=True,
         minmax_init=False,
-        grid_init=True,
+        grid_init=False,
         n_latent_gps=N_LATENT_GPS,
         mean_function="identity_fixed",
         fixed_warp_kernel_variances=np.ones(n_views) * 0.25,
@@ -134,10 +133,6 @@ for repeat_idx in range(N_REPEATS):
     # r2_union = r2_score(Y_test, preds)
     # print("R2, union: {}".format(round(r2_union, 5)))
 
-    # import ipdb; ipdb.set_trace()
-
-    # plt.scatter(Y_test, preds)
-    # plt.show()
 
     ## Make predictons for each view separately
     preds, truth = [], []
@@ -163,12 +158,7 @@ for repeat_idx in range(N_REPEATS):
     # r2_sep = r2_score(truth, preds)
     # print("R2, sep: {}".format(round(r2_sep, 5)))
 
-    # plt.scatter(truth, preds)
-    # plt.show()
-
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-1)
-
-    # import ipdb; ipdb.set_trace()
 
     def train(model, loss_fn, optimizer):
         model.train()
@@ -207,7 +197,7 @@ for repeat_idx in range(N_REPEATS):
         if t % PRINT_EVERY == 0:
             print("Iter: {0:<10} LL {1:1.3e}".format(t, -loss))
 
-            G_means_test, _, F_samples_test, _, = model.forward(
+            G_means_test, _, _, F_samples_test, = model.forward(
                 X_spatial={"expression": x_test},
                 view_idx=view_idx_test,
                 Ns=Ns_test,
