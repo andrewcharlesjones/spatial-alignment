@@ -133,7 +133,6 @@ for repeat_idx in range(N_REPEATS):
     # r2_union = r2_score(Y_test, preds)
     # print("R2, union: {}".format(round(r2_union, 5)))
 
-
     ## Make predictons for each view separately
     preds, truth = [], []
 

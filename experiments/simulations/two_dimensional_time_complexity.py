@@ -10,15 +10,12 @@ import time
 sys.path.append("../..")
 # from models.gpsa_vi_lmc import VariationalWarpGP
 # from util import matern12_kernel, rbf_kernel
-from gpsa import VariationalGPSA, matern12_kernel, rbf_kernel
+from gpsa import VariationalGPSA, matern12_kernel, rbf_kernel, LossNotDecreasingChecker
 from gpsa.plotting import callback_twod
 
 
 sys.path.append("../../data")
 from simulated.generate_twod_data import generate_twod_data
-
-# from plotting.callbacks import callback_twod
-from util import ConvergenceChecker
 
 ## For PASTE
 import scanpy as sc
@@ -35,13 +32,11 @@ LATEX_FONTSIZE = 35
 
 n_spatial_dims = 2
 n_views = 2
-# n_outputs = 10
 m_G = 50
 m_X_per_view = 50
 
-N_EPOCHS = 10000
+N_EPOCHS = 2000
 PRINT_EVERY = 100
-# N_LATENT_GPS = 1
 
 
 def two_d_gpsa(
@@ -145,21 +140,16 @@ def two_d_gpsa(
 
     loss_trace = []
     error_trace = []
-    decrease_in_loss = np.zeros(n_epochs)
-    average_decrease_in_loss = np.zeros(n_epochs)
+    # convergence_checker = LossNotDecreasingChecker(max_epochs=n_epochs, atol=1e-4)
+
     for t in range(n_epochs):
         loss = train(model, model.loss_fn, optimizer)
         loss_trace.append(loss)
 
-        if t >= 1:
-            decrease_in_loss[t] = loss_trace[t - 1] - loss_trace[t]
-        if t >= window_size:
-            average_decrease_in_loss[t] = np.mean(
-                decrease_in_loss[t - window_size + 1 : t]
-            )
-            has_converged = average_decrease_in_loss[t] < threshold
-            if has_converged:
-                break
+        # has_converged = convergence_checker.check_loss(t, loss_trace)
+        # if has_converged:
+        #     print("Convergence criterion met.")
+        #     break
 
         if plot_intermediate and t % PRINT_EVERY == 0:
             print("Iter: {0:<10} LL {1:1.3e}".format(t, -loss))
@@ -195,7 +185,7 @@ if __name__ == "__main__":
                 n_outputs=n_outputs,
                 warp_kernel_variance=0.5,
                 noise_variance=0.001,
-                n_latent_gps={"expression": 5},
+                n_latent_gps={"expression": None},
                 fixed_view_idx=None,
             )
             times_paste_array[ii, jj] = time_paste

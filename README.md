@@ -133,7 +133,7 @@ print("Done!")
 
 We can then extract the relevant parameters or latent variable estimates. Below, we show (in the right panel) an animation of the latent variables corresponding to the aligned coordinates over the course of training.
 
-![animation](examples/alignment_animation.gif)
+![animation](examples/alignment_animation_template.gif)
 
 ## Bugs
 

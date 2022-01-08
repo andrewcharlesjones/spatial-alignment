@@ -127,7 +127,7 @@ for vv in range(len(view_idx)):
     plt.scatter(curr_Y, curr_Z, label="Slice {}".format(vv + 1))
     plt.xlabel("Y")
     plt.ylabel("Z")
-    plt.xticks(np.arange(4))
+    plt.yticks(np.arange(4))
     # plt.title("Side view")
 
 plt.legend(loc="center left", bbox_to_anchor=(1, 0.5))

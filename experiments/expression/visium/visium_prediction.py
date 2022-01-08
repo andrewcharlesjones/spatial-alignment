@@ -33,7 +33,7 @@ def scale_spatial_coords(X, max_val=10.0):
 
 DATA_DIR = "../../../data/visium/mouse_brain"
 N_GENES = 10
-N_SAMPLES = 800
+N_SAMPLES = 2000
 
 n_spatial_dims = 2
 n_views = 2
@@ -42,10 +42,10 @@ m_X_per_view = 200
 
 N_LATENT_GPS = {"expression": None}
 
-N_EPOCHS = 2000
-PRINT_EVERY = 100
+N_EPOCHS = 5000
+PRINT_EVERY = 1
 
-FRAC_TEST = 0.2
+FRAC_TEST = 0.5
 N_REPEATS = 10
 
 
@@ -141,6 +141,12 @@ for repeat_idx in range(N_REPEATS):
     second_view_idx = view_idx[1]
     n_drop = int(1.0 * n_samples_list[1] * FRAC_TEST)
     test_idx = np.random.choice(second_view_idx, size=n_drop, replace=False)
+
+    ## Only test on interior of tissue
+    interior_idx = np.where((X[:, 0] > 2.5) & (X[:, 0] < 7.5) & (X[:, 1] > 2.5) & (X[:, 1] < 7.5))[0]
+    test_idx = np.intersect1d(interior_idx, test_idx)
+    n_drop = test_idx.shape[0]
+    
     keep_idx = np.setdiff1d(second_view_idx, test_idx)
 
     train_idx = np.concatenate([np.arange(n_samples_list[0]), keep_idx])
@@ -202,9 +208,11 @@ for repeat_idx in range(N_REPEATS):
     gpr_union.fit(X=X_train, y=Y_train)
     preds = gpr_union.predict(X_test)
     error_union = np.mean(np.sum((preds - Y_test) ** 2, axis=1))
+    error_union = r2_score(Y_test, preds)
+
     errors_union.append(error_union)
     print("MSE, union: {}".format(round(error_union, 5)), flush=True)
-    # r2_union = r2_score(Y_test, preds)
+    # 
     # print("R2, union: {}".format(round(r2_union, 5)))
 
 
@@ -226,11 +234,14 @@ for repeat_idx in range(N_REPEATS):
 
     preds = np.concatenate(preds, axis=0)
     truth = np.concatenate(truth, axis=0)
-    error_separate = np.mean(np.sum((preds - truth) ** 2, axis=1))
-    errors_separate.append(error_separate)
+    # error_separate = np.mean(np.sum((preds - truth) ** 2, axis=1))
+    error_separate = r2_score(truth, preds)
+    
     print("MSE, separate: {}".format(round(error_separate, 5)), flush=True)
-    # r2_sep = r2_score(truth, preds)
+    
     # print("R2, sep: {}".format(round(r2_sep, 5)))
+
+    errors_separate.append(error_separate)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
 
@@ -263,7 +274,7 @@ for repeat_idx in range(N_REPEATS):
     for t in range(N_EPOCHS):
         loss, G_means = train(model, model.loss_fn, optimizer)
 
-        if t % PRINT_EVERY == 0:
+        if t % PRINT_EVERY == 0 or t == N_EPOCHS - 1:
             print("Iter: {0:<10} LL {1:1.3e}".format(t, -loss))
 
             G_means_test, _, _, F_samples_test, = model.forward(
@@ -306,7 +317,8 @@ for repeat_idx in range(N_REPEATS):
                 gpr_gpsa = GaussianProcessRegressor(kernel=RBF() + WhiteKernel())
                 gpr_gpsa.fit(X=curr_aligned_coords, y=Y_train)
                 preds = gpr_gpsa.predict(curr_aligned_coords_test)
-                error_gpsa = np.mean(np.sum((preds - Y_test) ** 2, axis=1))
+                # error_gpsa = np.mean(np.sum((preds - Y_test) ** 2, axis=1))
+                error_gpsa = r2_score(Y_test, preds)
                 print("MSE, GPSA GPR: {}".format(round(error_gpsa, 5)), flush=True)
             except:
                 continue

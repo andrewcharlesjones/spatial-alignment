@@ -19,6 +19,21 @@ class GPSA(nn.Module):
         fixed_warp_kernel_lengthscales=None,
         fixed_data_kernel_lengthscales=None,
     ):
+        """Initialize GPSA model.
+
+        Args:
+            data_dict (dict): Dictionary of data in the format {"modality": {"spatial_coords": X, "outputs": Y, "n_samples_list": n_samples_list}}
+            data_init (bool, optional): Whether to initialize inducing locations with KMeans on data.
+            n_spatial_dims (int, optional): Number of spatial dimensions (usually 2 or 3).
+            n_noise_variance_params (int, optional): Number of noise variance parameters.
+            kernel_func_warp (function, optional): Covariance function for warp GP.
+            kernel_func_data (function, optional): Covariance function for output GP.
+            mean_function (str, optional): Mean function for warp GP. One of ["identity_fixed", "identity_initialized", or None]. None results in a linear mean function.
+            mean_penalty_param (float, optional): Description
+            fixed_warp_kernel_variances (None, optional): Description
+            fixed_warp_kernel_lengthscales (None, optional): Description
+            fixed_data_kernel_lengthscales (None, optional): Description
+        """
         super(GPSA, self).__init__()
         self.modality_names = list(data_dict.keys())
         self.n_modalities = len(self.modality_names)

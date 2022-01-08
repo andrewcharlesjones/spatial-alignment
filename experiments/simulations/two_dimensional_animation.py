@@ -17,6 +17,8 @@ from os.path import join as pjoin
 import anndata
 
 import matplotlib
+from matplotlib.lines import Line2D
+
 
 font = {"size": 20}
 matplotlib.rc("font", **font)
@@ -34,6 +36,7 @@ m_X_per_view = 50
 
 N_EPOCHS = 2000
 PRINT_EVERY = 100
+ONE_SAMPLE_FIXED = True
 
 
 def two_d_gpsa(
@@ -54,6 +57,7 @@ def two_d_gpsa(
         kernel_lengthscale=5.0,
         kernel_variance=warp_kernel_variance,
         noise_variance=noise_variance,
+        fixed_view_idx=0 if ONE_SAMPLE_FIXED else None,
     )
     n_samples_per_view = X.shape[0] // n_views
 
@@ -133,7 +137,7 @@ def two_d_gpsa(
         return loss.item()
 
     # Set up figure.
-    fig = plt.figure(figsize=(14, 7), facecolor="white", constrained_layout=True)
+    fig = plt.figure(figsize=(17, 7), facecolor="white", constrained_layout=True)
     data_expression_ax = fig.add_subplot(121, frameon=False)
     latent_expression_ax = fig.add_subplot(122, frameon=False)
     plt.show(block=False)
@@ -160,6 +164,32 @@ def two_d_gpsa(
                 X_aligned=G_means,
                 s=600,
             )
+            legend_elements = [
+                Line2D(
+                    [0],
+                    [0],
+                    marker="o",
+                    color="w",
+                    label="Slice 1",
+                    markerfacecolor="black",
+                    markersize=20,
+                ),
+                Line2D(
+                    [0],
+                    [0],
+                    marker="X",
+                    color="w",
+                    label="Slice 2",
+                    markerfacecolor="black",
+                    markersize=20,
+                ),
+            ]
+
+            # Create the figure
+            plt.legend(
+                handles=legend_elements, loc="center left", bbox_to_anchor=(1, 0.5)
+            )
+            plt.tight_layout()
             # plt.draw()
             plt.savefig("./tmp/tmp{}".format(n_frames))
             n_frames += 1
@@ -187,8 +217,13 @@ def two_d_gpsa(
 
     writervideo = animation.FFMpegWriter(fps=5)
     ani = animation.ArtistAnimation(fig, ims, interval=50, blit=True, repeat_delay=500)
+
+    if ONE_SAMPLE_FIXED:
+        save_name = "alignment_animation_template.gif"
+    else:
+        save_name = "alignment_animation.gif"
     ani.save(
-        pjoin("out", "alignment_animation.gif"),
+        pjoin("out", save_name),
         writer=writervideo,
         dpi=1000,
     )

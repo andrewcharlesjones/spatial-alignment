@@ -13,15 +13,15 @@ import time
 sys.path.append("../../..")
 sys.path.append("../../../data")
 from warps import apply_gp_warp
-from util import (
-    compute_size_factors,
-    poisson_deviance,
-    deviance_feature_selection,
-    deviance_residuals,
-    pearson_residuals,
-    matern12_kernel,
-    rbf_kernel,
-)
+# from util import (
+#     compute_size_factors,
+#     poisson_deviance,
+#     deviance_feature_selection,
+#     deviance_residuals,
+#     pearson_residuals,
+#     matern12_kernel,
+#     rbf_kernel,
+# )
 
 # from models.gpsa_vi_lmc import VariationalWarpGP
 # from plotting.callbacks import callback_oned, callback_twod, callback_twod_aligned_only
@@ -105,7 +105,7 @@ r2_vals = r2_score(Y_knn, preds, multioutput="raw_values")
 
 # gene_idx_to_keep = np.argsort(-r2_vals)[:N_GENES]
 # r2_vals_to_keep =
-gene_idx_to_keep = np.where(r2_vals > 0.3)[0]
+gene_idx_to_keep = np.where(r2_vals > 0.1)[0]
 N_GENES = min(N_GENES, len(gene_idx_to_keep))
 gene_names_to_keep = data_knn.var.gene_ids.index.values[gene_idx_to_keep]
 gene_names_to_keep = gene_names_to_keep[np.argsort(-r2_vals[gene_idx_to_keep])]

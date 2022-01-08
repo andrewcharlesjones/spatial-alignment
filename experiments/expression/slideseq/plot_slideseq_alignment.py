@@ -55,6 +55,7 @@ for handle in lgnd.legendHandles:
     handle.set_sizes([60])
 plt.tight_layout()
 plt.axis("off")
+plt.gca().invert_yaxis()
 
 # plt.subplot(2, n_genes + 1, 5)
 plt.sca(ax[1, 0])
@@ -65,6 +66,7 @@ for vv in range(len(data.obs.batch.unique())):
         s=1,
     )
 plt.axis("off")
+plt.gca().invert_yaxis()
 
 
 for gg in range(n_genes):
@@ -80,6 +82,7 @@ for gg in range(n_genes):
         )
     plt.title(r"$\emph{" + data.var.gene_ids.values[gg] + "}$")
     plt.axis("off")
+    plt.gca().invert_yaxis()
 
     # plt.subplot(2, n_genes + 1, gg + (n_genes + 2) + 1)
     plt.sca(ax[1, gg + 1])
@@ -92,6 +95,7 @@ for gg in range(n_genes):
         )
     # plt.title(r"$\emph{" + data.var.gene_ids.values[gg] + "}$")
     plt.axis("off")
+    plt.gca().invert_yaxis()
 
 plt.savefig("./out/slideseq_alignment_per_gene.png")
 plt.show()

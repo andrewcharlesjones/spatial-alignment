@@ -185,6 +185,7 @@ def callback_twod(
     is_mle=False,
     gene_idx=0,
     s=200,
+    include_legend=False,
 ):
 
     if model.fixed_view_idx is not None:
@@ -223,7 +224,7 @@ def callback_twod(
         latent_Xs.append(curr_latent_Xs)
         Ys.append(Y[curr_view_idx[vv], gene_idx])
         markers_list.append([markers[vv]] * curr_latent_Xs.shape[0])
-        viewname_list.append(["View {}".format(vv + 1)] * curr_latent_Xs.shape[0])
+        viewname_list.append(["Observation {}".format(vv + 1)] * curr_latent_Xs.shape[0])
 
     Xs = np.concatenate(Xs, axis=0)
     latent_Xs = np.concatenate(latent_Xs, axis=0)
@@ -264,7 +265,8 @@ def callback_twod(
         edgecolor="black",
         palette="viridis",
     )
-    g.legend_.remove()
+    if not include_legend:
+        g.legend_.remove()
     # plt.colorbar()
     # plt.axis("off")
     # plt.scatter(model.Xtilde.detach().numpy()[0, :, 0], model.Xtilde.detach().numpy()[0, :, 1], color="red")
@@ -285,7 +287,8 @@ def callback_twod(
         edgecolor="black",
         palette="viridis",
     )
-    g.legend_.remove()
+    if not include_legend:
+        g.legend_.remove()
     # plt.colorbar()
 
     # import ipdb; ipdb.set_trace()
