@@ -2,7 +2,7 @@
 ![Build Status](https://github.com/andrewcharlesjones/spatial-alignment/actions/workflows/main.yml/badge.svg)
 [![PyPI](https://img.shields.io/pypi/v/gpsa.svg?logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/gpsa/)
 
-This repository contains the code for our paper, [Alignment of spatial genomics and histology data using deep Gaussian processes]().
+This repository contains the code for our paper, [Alignment of spatial genomics and histology data using deep Gaussian processes](https://www.biorxiv.org/content/10.1101/2022.01.10.475692v1).
 
 GPSA is a probabilistic model that aligns a set of spatial coordinates into a common coordinate system.
 
