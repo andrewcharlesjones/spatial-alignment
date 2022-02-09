@@ -1,4 +1,5 @@
 data/
+!data/simulated/
 __pycache__
 *.png
 *.pdf

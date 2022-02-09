@@ -137,7 +137,7 @@ def two_d_gpsa(
         return loss.item()
 
     # Set up figure.
-    fig = plt.figure(figsize=(17, 7), facecolor="white", constrained_layout=True)
+    fig = plt.figure(figsize=(12.14, 5), facecolor="white", constrained_layout=True)
     data_expression_ax = fig.add_subplot(121, frameon=False)
     latent_expression_ax = fig.add_subplot(122, frameon=False)
     plt.show(block=False)

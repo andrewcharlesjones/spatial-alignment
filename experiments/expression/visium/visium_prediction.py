@@ -33,7 +33,7 @@ def scale_spatial_coords(X, max_val=10.0):
 
 DATA_DIR = "../../../data/visium/mouse_brain"
 N_GENES = 10
-N_SAMPLES = 2000
+N_SAMPLES = 1500
 
 n_spatial_dims = 2
 n_views = 2
@@ -42,8 +42,8 @@ m_X_per_view = 200
 
 N_LATENT_GPS = {"expression": None}
 
-N_EPOCHS = 5000
-PRINT_EVERY = 1
+N_EPOCHS = 2000
+PRINT_EVERY = 100
 
 FRAC_TEST = 0.5
 N_REPEATS = 10
@@ -204,9 +204,14 @@ for repeat_idx in range(N_REPEATS):
     view_idx_test, Ns_test, _, _ = model.create_view_idx_dict(data_dict_test)
 
     ## Make predictions for naive alignment
-    gpr_union = GaussianProcessRegressor(kernel=RBF() + WhiteKernel())
-    gpr_union.fit(X=X_train, y=Y_train)
-    preds = gpr_union.predict(X_test)
+    # gpr_union = GaussianProcessRegressor(kernel=RBF() + WhiteKernel())
+    # gpr_union.fit(X=X_train, y=Y_train)
+    # preds = gpr_union.predict(X_test)
+
+    knn = KNeighborsRegressor(n_neighbors=25)
+    knn.fit(X=X_train, y=Y_train)
+    preds = knn.predict(X_test)
+
     error_union = np.mean(np.sum((preds - Y_test) ** 2, axis=1))
     error_union = r2_score(Y_test, preds)
 
@@ -220,15 +225,21 @@ for repeat_idx in range(N_REPEATS):
     preds, truth = [], []
 
     for vv in range(n_views):
-        gpr_separate = GaussianProcessRegressor(kernel=RBF() + WhiteKernel())
         curr_trainX = X_train[view_idx_train["expression"][vv]]
         curr_trainY = Y_train[view_idx_train["expression"][vv]]
         curr_testX = X_test[view_idx_test["expression"][vv]]
         curr_testY = Y_test[view_idx_test["expression"][vv]]
         if len(curr_testX) == 0:
             continue
-        gpr_separate.fit(X=curr_trainX, y=curr_trainY)
-        curr_preds = gpr_separate.predict(curr_testX)
+
+        # gpr_separate = GaussianProcessRegressor(kernel=RBF() + WhiteKernel())
+        # gpr_separate.fit(X=curr_trainX, y=curr_trainY)
+        # curr_preds = gpr_separate.predict(curr_testX)
+
+        knn = KNeighborsRegressor(n_neighbors=25)
+        knn.fit(X=curr_trainX, y=curr_trainY)
+        curr_preds = knn.predict(curr_testX)
+
         preds.append(curr_preds)
         truth.append(curr_testY)
 
@@ -314,9 +325,13 @@ for repeat_idx in range(N_REPEATS):
             curr_aligned_coords_test = G_means_test["expression"].detach().numpy()
 
             try:
-                gpr_gpsa = GaussianProcessRegressor(kernel=RBF() + WhiteKernel())
-                gpr_gpsa.fit(X=curr_aligned_coords, y=Y_train)
-                preds = gpr_gpsa.predict(curr_aligned_coords_test)
+                # gpr_gpsa = GaussianProcessRegressor(kernel=RBF() + WhiteKernel())
+                # gpr_gpsa.fit(X=curr_aligned_coords, y=Y_train)
+                # preds = gpr_gpsa.predict(curr_aligned_coords_test)
+
+                knn = KNeighborsRegressor(n_neighbors=25)
+                knn.fit(X=curr_aligned_coords, y=Y_train)
+                preds = knn.predict(curr_aligned_coords_test)
                 # error_gpsa = np.mean(np.sum((preds - Y_test) ** 2, axis=1))
                 error_gpsa = r2_score(Y_test, preds)
                 print("MSE, GPSA GPR: {}".format(round(error_gpsa, 5)), flush=True)

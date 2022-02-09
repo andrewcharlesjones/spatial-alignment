@@ -59,6 +59,7 @@ Y_histology = pd.read_csv(
 data = sc.read_h5ad("./out/data_visium.h5")
 
 
+
 markers = ["o", "X", "+", "*"]
 
 plt.figure(figsize=(12, 10))

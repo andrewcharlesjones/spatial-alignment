@@ -86,6 +86,15 @@ def process_data(adata, n_top_genes=2000):
 data_slice1 = sc.read_visium(pjoin(DATA_DIR, "sample1"))
 data_slice1 = process_data(data_slice1, n_top_genes=6000)
 
+plt.figure(figsize=(10, 5))
+plt.subplot(121)
+sc.pl.spatial(data_slice1, color=["mt-Co1"], spot_size=150, img_key=None, ax=plt.gca(), show=False)
+plt.subplot(122)
+sc.pl.spatial(data_slice1, color=["Camk2a"], spot_size=150, img_key=None, ax=plt.gca(), show=False)
+plt.savefig("./out/visium_dophin_genes.png")
+plt.show()
+import ipdb; ipdb.set_trace()
+
 data_slice2 = sc.read_visium(pjoin(DATA_DIR, "sample2"))
 data_slice2 = process_data(data_slice2, n_top_genes=6000)
 

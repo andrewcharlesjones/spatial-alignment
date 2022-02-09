@@ -32,7 +32,7 @@ n_views = 2
 m_G = 50
 m_X_per_view = 50
 
-N_EPOCHS = 2000
+N_EPOCHS = 3000
 PRINT_EVERY = 100
 
 
@@ -202,7 +202,7 @@ if __name__ == "__main__":
             s=300,
             linewidth=1.8,
             edgecolor="black",
-            label="Observation {}".format(vv + 1),
+            label="Slice {}".format(vv + 1),
         )
     plt.title(r"$\emph{Template-based}$ alignment")
     plt.xlabel("Spatial 1")
