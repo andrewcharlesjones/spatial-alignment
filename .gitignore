@@ -1,5 +1,6 @@
-data/
+data/*
 !data/simulated/
+!data/warps.py
 __pycache__
 *.png
 *.pdf
