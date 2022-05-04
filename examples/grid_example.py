@@ -12,8 +12,8 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 N_SPATIAL_DIMS = 2
 N_VIEWS = 2
-M_G = 50
-M_X_PER_VIEW = 50
+M_G = 25
+M_X_PER_VIEW = 25
 N_OUTPUTS = 5
 FIXED_VIEW_IDX = 0
 N_LATENT_GPS = {"expression": None}

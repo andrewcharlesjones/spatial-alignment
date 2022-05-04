@@ -7,6 +7,7 @@ import seaborn as sns
 import sys
 from os.path import join as pjoin
 import scanpy as sc
+import squidpy as sq
 import anndata
 from sklearn.metrics import r2_score, mean_squared_error
 
@@ -26,26 +27,28 @@ from sklearn.metrics import r2_score
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
+
 def scale_spatial_coords(X, max_val=10.0):
     X = X - X.min(0)
     X = X / X.max(0)
     return X * max_val
 
+
 DATA_DIR = "../../../data/visium/mouse_brain"
 N_GENES = 10
-N_SAMPLES = 1500
+N_SAMPLES = 1_000
 
 n_spatial_dims = 2
 n_views = 2
-m_G = 200
-m_X_per_view = 200
+m_G = 100  # 200
+m_X_per_view = 100  # 200
 
 N_LATENT_GPS = {"expression": None}
 
-N_EPOCHS = 2000
+N_EPOCHS = 2_000
 PRINT_EVERY = 100
 
-FRAC_TEST = 0.5
+FRAC_TEST = 0.25
 N_REPEATS = 10
 
 
@@ -76,38 +79,30 @@ data_slice2 = process_data(data_slice2, n_top_genes=6000)
 data = data_slice1.concatenate(data_slice2)
 
 
-shared_gene_names = data.var.gene_ids.index.values
-data_knn = data_slice1[:, shared_gene_names]
-X_knn = data_knn.obsm["spatial"]
-Y_knn = np.array(data_knn.X.todense())  # [:, :1000]
-nbrs = NearestNeighbors(n_neighbors=2).fit(X_knn)
-distances, indices = nbrs.kneighbors(X_knn)
+# shared_gene_names = data.var.gene_ids.index.values
+# data_knn = data_slice1[:, shared_gene_names]
+# X_knn = data_knn.obsm["spatial"]
+# Y_knn = np.array(data_knn.X.todense())  # [:, :1000]
+# nbrs = NearestNeighbors(n_neighbors=2).fit(X_knn)
+# distances, indices = nbrs.kneighbors(X_knn)
 
-preds = Y_knn[indices[:, 1]]
-r2_vals = r2_score(Y_knn, preds, multioutput="raw_values")
+# preds = Y_knn[indices[:, 1]]
+# r2_vals = r2_score(Y_knn, preds, multioutput="raw_values")
 
+sq.gr.spatial_neighbors(data_slice1)
+sq.gr.spatial_autocorr(
+    data_slice1,
+    mode="moran",
+)
 
-gene_idx_to_keep = np.where(r2_vals > 0.3)[0]
-N_GENES = min(N_GENES, len(gene_idx_to_keep))
-gene_names_to_keep = data_knn.var.gene_ids.index.values[gene_idx_to_keep]
-gene_names_to_keep = gene_names_to_keep[np.argsort(-r2_vals[gene_idx_to_keep])]
-if N_GENES < len(gene_names_to_keep):
-    gene_names_to_keep = gene_names_to_keep[:N_GENES]
-data = data[:, gene_names_to_keep]
+moran_scores = data_slice1.uns["moranI"]
+genes_to_keep = moran_scores.index.values[np.where(moran_scores.I.values > 0.7)[0]]
+genes_to_keep = np.intersect1d(genes_to_keep, data.var.index.values)
+N_GENES = len(genes_to_keep)
+data = data[:, genes_to_keep]
 
-if N_SAMPLES is not None:
-    # rand_idx = np.random.choice(
-    #     np.arange(data_slice1.shape[0]), size=N_SAMPLES, replace=False
-    # )
-    # data_slice1 = data_slice1[rand_idx]
-    # rand_idx = np.random.choice(
-    #     np.arange(data_slice2.shape[0]), size=N_SAMPLES, replace=False
-    # )
-    # data_slice2 = data_slice2[rand_idx]
-    rand_idx = np.random.choice(
-        np.arange(data.shape[0]), size=N_SAMPLES * 2, replace=False
-    )
-    data = data[rand_idx]
+data = data[np.random.choice(np.arange(data.shape[0]), size=N_SAMPLES, replace=False)]
+
 
 # all_slices = anndata.concat([data_slice1, data_slice2])
 data_slice1 = data[data.obs.batch == "0"]
@@ -141,12 +136,8 @@ for repeat_idx in range(N_REPEATS):
     second_view_idx = view_idx[1]
     n_drop = int(1.0 * n_samples_list[1] * FRAC_TEST)
     test_idx = np.random.choice(second_view_idx, size=n_drop, replace=False)
-
-    ## Only test on interior of tissue
-    interior_idx = np.where((X[:, 0] > 2.5) & (X[:, 0] < 7.5) & (X[:, 1] > 2.5) & (X[:, 1] < 7.5))[0]
-    test_idx = np.intersect1d(interior_idx, test_idx)
     n_drop = test_idx.shape[0]
-    
+
     keep_idx = np.setdiff1d(second_view_idx, test_idx)
 
     train_idx = np.concatenate([np.arange(n_samples_list[0]), keep_idx])
@@ -181,7 +172,6 @@ for repeat_idx in range(N_REPEATS):
             "n_samples_list": n_samples_list_test,
         }
     }
-    # import ipdb; ipdb.set_trace()
 
     model = VariationalGPSA(
         data_dict_train,
@@ -208,18 +198,16 @@ for repeat_idx in range(N_REPEATS):
     # gpr_union.fit(X=X_train, y=Y_train)
     # preds = gpr_union.predict(X_test)
 
-    knn = KNeighborsRegressor(n_neighbors=25)
+    knn = KNeighborsRegressor(n_neighbors=10, weights="distance")
     knn.fit(X=X_train, y=Y_train)
     preds = knn.predict(X_test)
 
     error_union = np.mean(np.sum((preds - Y_test) ** 2, axis=1))
-    error_union = r2_score(Y_test, preds)
+    error_union = r2_score(Y_test, preds, multioutput="raw_values")
 
     errors_union.append(error_union)
-    print("MSE, union: {}".format(round(error_union, 5)), flush=True)
-    # 
-    # print("R2, union: {}".format(round(r2_union, 5)))
-
+    # print("MSE, union: {}".format(round(error_union, 5)), flush=True)
+    print("MSE, union: {}".format(round(np.mean(error_union), 5)), flush=True)
 
     ## Make predictons for each view separately
     preds, truth = [], []
@@ -236,7 +224,7 @@ for repeat_idx in range(N_REPEATS):
         # gpr_separate.fit(X=curr_trainX, y=curr_trainY)
         # curr_preds = gpr_separate.predict(curr_testX)
 
-        knn = KNeighborsRegressor(n_neighbors=25)
+        knn = KNeighborsRegressor(n_neighbors=10, weights="distance")
         knn.fit(X=curr_trainX, y=curr_trainY)
         curr_preds = knn.predict(curr_testX)
 
@@ -246,10 +234,10 @@ for repeat_idx in range(N_REPEATS):
     preds = np.concatenate(preds, axis=0)
     truth = np.concatenate(truth, axis=0)
     # error_separate = np.mean(np.sum((preds - truth) ** 2, axis=1))
-    error_separate = r2_score(truth, preds)
-    
-    print("MSE, separate: {}".format(round(error_separate, 5)), flush=True)
-    
+    error_separate = r2_score(truth, preds, multioutput="raw_values")
+
+    print("MSE, separate: {}".format(round(np.mean(error_separate), 5)), flush=True)
+
     # print("R2, sep: {}".format(round(r2_sep, 5)))
 
     errors_separate.append(error_separate)
@@ -329,28 +317,41 @@ for repeat_idx in range(N_REPEATS):
                 # gpr_gpsa.fit(X=curr_aligned_coords, y=Y_train)
                 # preds = gpr_gpsa.predict(curr_aligned_coords_test)
 
-                knn = KNeighborsRegressor(n_neighbors=25)
+                knn = KNeighborsRegressor(n_neighbors=10, weights="distance")
                 knn.fit(X=curr_aligned_coords, y=Y_train)
                 preds = knn.predict(curr_aligned_coords_test)
                 # error_gpsa = np.mean(np.sum((preds - Y_test) ** 2, axis=1))
-                error_gpsa = r2_score(Y_test, preds)
-                print("MSE, GPSA GPR: {}".format(round(error_gpsa, 5)), flush=True)
+                error_gpsa = r2_score(Y_test, preds, multioutput="raw_values")
+
+                print(
+                    "MSE, GPSA GPR: {}".format(round(np.mean(error_gpsa), 5)),
+                    flush=True,
+                )
             except:
                 continue
+
+            # import ipdb; ipdb.set_trace()
 
     errors_gpsa.append(error_gpsa)
 
     plt.close()
 
+    errors_union_arr = np.array(errors_union)
+    errors_separate_arr = np.array(errors_separate)
+    errors_gpsa_arr = np.array(errors_gpsa)
+    pd.DataFrame(errors_union_arr).to_csv("./out/prediction_errors_union.csv")
+    pd.DataFrame(errors_separate_arr).to_csv("./out/prediction_errors_separate.csv")
+    pd.DataFrame(errors_gpsa_arr).to_csv("./out/prediction_errors_gpsa.csv")
+
     results_df = pd.DataFrame(
         {
-            "Union": errors_union[: repeat_idx + 1],
-            "Separate": errors_separate[: repeat_idx + 1],
-            "GPSA": errors_gpsa[: repeat_idx + 1],
+            "Union": np.mean(errors_union_arr, axis=1),
+            "Separate": np.mean(errors_separate_arr, axis=1),
+            "GPSA": np.mean(errors_gpsa_arr, axis=1),
         }
     )
     results_df_melted = pd.melt(results_df)
-    results_df_melted.to_csv("./out/twod_prediction_visium.csv")
+    # results_df_melted.to_csv("./out/twod_prediction_visium.csv")
 
     plt.figure(figsize=(7, 5))
     sns.boxplot(data=results_df_melted, x="variable", y="value", color="gray")
@@ -361,8 +362,4 @@ for repeat_idx in range(N_REPEATS):
     # plt.show()
     plt.close()
 
-
     # import ipdb; ipdb.set_trace()
-
-
-

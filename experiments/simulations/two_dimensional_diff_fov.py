@@ -6,13 +6,16 @@ import pandas as pd
 import seaborn as sns
 import sys
 
-sys.path.append("../..")
-from models.gpsa_vi_lmc import VariationalWarpGP
+# sys.path.append("../..")
+# from models.gpsa_vi_lmc import VariationalWarpGP
+
+from gpsa import VariationalGPSA, rbf_kernel
+from gpsa.plotting import callback_twod
 
 sys.path.append("../../data")
 from simulated.generate_twod_data import generate_twod_data_partial_overlap
-from plotting.callbacks import callback_twod
-from util import ConvergenceChecker
+# from plotting.callbacks import callback_twod
+# from util import ConvergenceChecker
 
 ## For PASTE
 import scanpy as sc
@@ -35,11 +38,10 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 n_spatial_dims = 2
 n_views = 2
-# n_outputs = 10
 m_G = 40
 m_X_per_view = 40
 
-N_EPOCHS = 2000
+N_EPOCHS = 3000
 PRINT_EVERY = 50
 
 
@@ -104,7 +106,7 @@ def two_d_gpsa_diff_fov(
         }
     }
 
-    model = VariationalWarpGP(
+    model = VariationalGPSA(
         data_dict,
         n_spatial_dims=n_spatial_dims,
         m_X_per_view=m_X_per_view,
@@ -143,7 +145,7 @@ def two_d_gpsa_diff_fov(
         loss.backward()
         optimizer.step()
 
-        return loss.item()
+        return loss.item(), G_means
 
     # Set up figure.
     fig = plt.figure(figsize=(14, 7), facecolor="white", constrained_layout=True)
@@ -153,9 +155,35 @@ def two_d_gpsa_diff_fov(
 
     loss_trace = []
     error_trace = []
+
+    fig = plt.figure(figsize=(14, 7), facecolor="white", constrained_layout=True)
+    data_expression_ax = fig.add_subplot(121, frameon=False)
+    latent_expression_ax = fig.add_subplot(122, frameon=False)
+
     for t in range(n_epochs):
-        loss = train(model, model.loss_fn, optimizer)
+        loss, G_means = train(model, model.loss_fn, optimizer)
         loss_trace.append(loss)
+
+        if t % 100 == 0:
+            print("Iter: {0:<10} LL {1:1.3e}".format(t, -loss))
+
+            callback_twod(
+                model,
+                X,
+                Y,
+                data_expression_ax=data_expression_ax,
+                latent_expression_ax=latent_expression_ax,
+                # prediction_ax=ax_dict["preds"],
+                X_aligned=G_means,
+                # X_test=X_test,
+                # Y_test_true=Y_test,
+                # Y_pred=curr_preds,
+                # X_test_aligned=G_means_test,
+            )
+            plt.draw()
+            plt.pause(1 / 60.0)
+
+    plt.close()
 
     G_means, G_samples, F_latent_samples, F_samples = model.forward(
         {"expression": x}, view_idx=view_idx, Ns=Ns
@@ -203,9 +231,10 @@ def two_d_gpsa_diff_fov(
         paste_ax.set_title("PASTE")
 
         markers = ["o", "X"]
-        edgecolors = ["black", "gray"]
-        sizes = [400, 200]
+        edgecolors = ["black", "red"] # "gray"]
+        sizes = [300, 100]
         linewidth = 3
+        alpha_vals = [0.3, 1.0]
 
         paste_aligned_coords = np.concatenate(
             [new_slices[0].obsm["spatial"], new_slices[1].obsm["spatial"]], axis=0
@@ -219,10 +248,11 @@ def two_d_gpsa_diff_fov(
                 c=Y[curr_idx][:, 0],
                 marker=markers[vv],
                 s=sizes[vv],
-                edgecolor=edgecolors[vv],
+                edgecolor=None, #edgecolors[vv],
                 linewidth=linewidth,
                 vmin=minY,
                 vmax=maxY,
+                alpha=alpha_vals[vv],
             )
 
             paste_ax.scatter(
@@ -231,10 +261,11 @@ def two_d_gpsa_diff_fov(
                 c=Y[curr_idx][:, 0],
                 marker=markers[vv],
                 s=sizes[vv],
-                edgecolor=edgecolors[vv],
+                edgecolor=None, #edgecolors[vv],
                 linewidth=linewidth,
                 vmin=minY,
                 vmax=maxY,
+                alpha=alpha_vals[vv],
             )
 
             curr_aligned_coords = G_means["expression"].detach().numpy()[curr_idx]
@@ -258,11 +289,12 @@ def two_d_gpsa_diff_fov(
                     c=Y[curr_idx][:, 0],
                     marker=markers[vv],
                     s=sizes[vv],
-                    edgecolor=edgecolors[vv],
+                    edgecolor=None, #edgecolors[vv],
                     linewidth=linewidth,
                     label="View {}".format(vv + 1),
                     vmin=minY,
                     vmax=maxY,
+                    alpha=alpha_vals[vv],
                 )
             else:
                 aligned_ax.scatter(
@@ -271,11 +303,12 @@ def two_d_gpsa_diff_fov(
                     c=Y[curr_idx][:, 0],
                     marker=markers[vv],
                     s=sizes[vv],
-                    edgecolor=edgecolors[vv],
+                    edgecolor=None, #edgecolors[vv],
                     linewidth=linewidth,
                     label="View {}".format(vv + 1),
                     vmin=minY,
                     vmax=maxY,
+                    alpha=alpha_vals[vv],
                 )
 
         plt.legend(loc="center left", bbox_to_anchor=(1, 0.5))
@@ -379,7 +412,7 @@ def two_d_gpsa_diff_fov(
 
 if __name__ == "__main__":
 
-    n_outputs = 10
+    n_outputs = 5
     n_repeats = 5
 
     errs_paste = np.zeros(n_repeats)
@@ -390,7 +423,7 @@ if __name__ == "__main__":
             n_epochs=N_EPOCHS,
             n_outputs=n_outputs,
             warp_kernel_variance=0.1,
-            warp_kernel_lengthscale=2.5,
+            warp_kernel_lengthscale=5.,
             n_latent_gps={"expression": 5},
             make_plot=True if ii == 0 else False,
         )

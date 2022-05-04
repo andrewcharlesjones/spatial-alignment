@@ -190,20 +190,37 @@ def apply_linear_warp(
 
     for vv in range(n_views):
 
-        curr_slopes = np.eye(n_spatial_dims) + np.random.normal(
-            loc=0,
-            scale=np.sqrt(linear_slope_variance),
-            size=(n_spatial_dims, n_spatial_dims),
-        )
+        # curr_slopes = np.eye(n_spatial_dims) + np.random.normal(
+        #     loc=0,
+        #     scale=np.sqrt(linear_slope_variance),
+        #     size=(n_spatial_dims, n_spatial_dims),
+        # )
         # import ipdb; ipdb.set_trace()
         # curr_slopes /= np.linalg.norm(curr_slopes, ord=2, axis=0)
         # curr_slopes = np.linalg.svd(curr_slopes)[0]
 
-        curr_intercepts = np.random.normal(
-            loc=0, scale=np.sqrt(linear_intercept_variance), size=n_spatial_dims
+        # curr_slopes = np.random.normal(
+        #     loc=1,
+        #     scale=np.sqrt(linear_slope_variance),
+        #     size=n_spatial_dims,
+        # )
+
+        # curr_intercepts = np.random.normal(
+        #     loc=0, scale=np.sqrt(linear_intercept_variance), size=n_spatial_dims
+        # )
+
+        curr_slopes = np.random.uniform(
+            low=1 - linear_slope_variance,
+            high=1 + linear_slope_variance,
+            size=n_spatial_dims,
         )
 
-        X_curr_view_warped = X_orig_single @ curr_slopes + curr_intercepts
+        curr_intercepts = np.random.uniform(
+            low=linear_intercept_variance, high=linear_intercept_variance, size=n_spatial_dims
+        )
+        # print(curr_slopes, curr_intercepts)
+
+        X_curr_view_warped = X_orig_single * curr_slopes + curr_intercepts
         X[
             n_samples_per_view * vv : n_samples_per_view * (vv + 1), :
         ] = X_curr_view_warped
@@ -244,16 +261,21 @@ def apply_polar_warp(
 
     X = X_orig.copy()
 
-    no_distortion_B = np.array([
-            [0, np.pi * 0.5],
-            [0, 0]
-        ])
+    # no_distortion_B = np.array([
+    #         [0, np.pi * 0.5],
+    #         [0, 0]
+    #     ])
 
     for vv in range(n_views):
 
-        B = np.random.normal(
-            loc=0,
-            scale=np.sqrt(linear_slope_variance),
+        # B = np.random.normal(
+        #     loc=0,
+        #     scale=np.sqrt(linear_slope_variance),
+        #     size=(n_spatial_dims, n_spatial_dims),
+        # )
+        B = np.random.uniform(
+            low=-linear_slope_variance,
+            high=linear_slope_variance,
             size=(n_spatial_dims, n_spatial_dims),
         )
         polar_params = X_orig_single @ B

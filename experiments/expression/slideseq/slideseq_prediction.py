@@ -7,6 +7,7 @@ import seaborn as sns
 import sys
 from os.path import join as pjoin
 import scanpy as sc
+import squidpy as sq
 import anndata
 from sklearn.metrics import r2_score, mean_squared_error
 
@@ -36,23 +37,20 @@ def scale_spatial_coords(X, max_val=10.0):
 
 
 DATA_DIR = "../../../data/slideseq/mouse_hippocampus"
-N_GENES = 10
-N_SAMPLES = 2000
+N_SAMPLES = 2000  # 2000
 
 n_spatial_dims = 2
 n_views = 2
-m_G = 200
-m_X_per_view = 200
+m_G = 50  # 200
+m_X_per_view = 50  # 200
 
 N_LATENT_GPS = {"expression": None}
 
-N_EPOCHS = 2000
+N_EPOCHS = 2_000
 PRINT_EVERY = 100
 
-FRAC_TEST = 0.2
+FRAC_TEST = 0.25
 N_REPEATS = 10
-
-GENE_IDX_TO_TEST = np.arange(N_GENES)
 
 
 def process_data(adata, n_top_genes=2000):
@@ -63,7 +61,7 @@ def process_data(adata, n_top_genes=2000):
     sc.pp.filter_cells(adata, min_counts=500)  # 1800
     # sc.pp.filter_cells(adata, max_counts=35000)
     # adata = adata[adata.obs["pct_counts_mt"] < 20]
-    # sc.pp.filter_genes(adata, min_cells=10)
+    sc.pp.filter_genes(adata, min_cells=10)
 
     sc.pp.normalize_total(adata, inplace=True)
     sc.pp.log1p(adata)
@@ -88,7 +86,7 @@ data_slice1 = anndata.AnnData(
     X=expression_slice1, obs=barcode_names_slice1, var=gene_names_slice1
 )
 data_slice1.obsm["spatial"] = spatial_locs_slice1.values
-data_slice1 = process_data(data_slice1, n_top_genes=6000)
+data_slice1 = process_data(data_slice1, n_top_genes=3000)
 
 
 spatial_locs_slice2 = pd.read_csv(
@@ -106,23 +104,7 @@ data_slice2 = anndata.AnnData(
     X=expression_slice2, obs=barcode_names_slice2, var=gene_names_slice2
 )
 data_slice2.obsm["spatial"] = spatial_locs_slice2.values
-data_slice2 = process_data(data_slice2, n_top_genes=6000)
-
-
-if N_SAMPLES is not None:
-    rand_idx = np.random.choice(
-        np.arange(data_slice1.shape[0]), size=N_SAMPLES, replace=False
-    )
-    data_slice1 = data_slice1[rand_idx]
-    rand_idx = np.random.choice(
-        np.arange(data_slice2.shape[0]), size=N_SAMPLES, replace=False
-    )
-    data_slice2 = data_slice2[rand_idx]
-
-    # rand_idx = np.random.choice(
-    #     np.arange(data.shape[0]), size=N_SAMPLES * 2, replace=False
-    # )
-    # data = data[rand_idx]
+data_slice2 = process_data(data_slice2, n_top_genes=3000)
 
 
 ## Remove outlier points outside of puck
@@ -138,37 +120,7 @@ inlier_idx = np.where(neighbor_dists[:, -1] < MAX_NEIGHBOR_DIST)[0]
 data_slice2 = data_slice2[inlier_idx]
 
 
-## Save original data
-plt.figure(figsize=(10, 5))
-plt.subplot(121)
-plt.scatter(
-    data_slice1.obsm["spatial"][:, 0],
-    data_slice1.obsm["spatial"][:, 1],
-    # c=np.log(np.array(data_slice1.X[:, 0].todense()) + 1)
-    s=3,
-)
-plt.title("Slice 1", fontsize=30)
-plt.gca().invert_yaxis()
-plt.axis("off")
-
-plt.subplot(122)
-plt.scatter(
-    data_slice2.obsm["spatial"][:, 0],
-    data_slice2.obsm["spatial"][:, 1],
-    # c=np.log(np.array(data_slice2.X[:, 0].todense()) + 1)
-    s=3,
-)
-plt.title("Slice 2", fontsize=30)
-plt.gca().invert_yaxis()
-plt.axis("off")
-plt.savefig("./out/slideseq_original_slices.png")
-# plt.show()
-plt.close()
-# import ipdb
-
-# ipdb.set_trace()
-
-
+## Perform initial coarse adjustment
 angle = 1.45
 slice1_coords = data_slice1.obsm["spatial"].copy()
 slice2_coords = data_slice2.obsm["spatial"].copy()
@@ -185,72 +137,57 @@ data_slice2.obsm["spatial"] = slice2_coords
 
 print(data_slice1.shape, data_slice2.shape)
 
-data = data_slice1.concatenate(data_slice2)
 
-## Remove genes with no variance
-shared_gene_names = data.var.gene_ids.index.values
-data_slice1 = data_slice1[:, shared_gene_names]
-data_slice2 = data_slice2[:, shared_gene_names]
+data_slice1 = data_slice1[
+    np.random.choice(np.arange(data_slice1.shape[0]), size=N_SAMPLES, replace=False)
+]
+data_slice2 = data_slice2[
+    np.random.choice(np.arange(data_slice2.shape[0]), size=N_SAMPLES, replace=False)
+]
 
-nonzerovar_idx = np.intersect1d(
-    np.where(np.array(data_slice1.X.todense()).var(0) > 0)[0],
-    np.where(np.array(data_slice2.X.todense()).var(0) > 0)[0],
+sq.gr.spatial_neighbors(data_slice1)
+sq.gr.spatial_autocorr(
+    data_slice1,
+    mode="moran",
 )
 
-data = data[:, nonzerovar_idx]
+moran_scores = data_slice1.uns["moranI"]
+genes_to_keep = moran_scores.index.values[np.where(moran_scores.I.values > 0.2)[0]]
+genes_to_keep = np.intersect1d(genes_to_keep, data_slice2.var.index.values)
+N_GENES = len(genes_to_keep)
+
+data_slice1 = data_slice1[:, genes_to_keep]
+data_slice2 = data_slice2[:, genes_to_keep]
+
+
+## Remove genes with low variance
+nonzerovar_idx = np.intersect1d(
+    np.where(np.array(data_slice1.X.todense()).var(0) > 0.1)[0],
+    np.where(np.array(data_slice2.X.todense()).var(0) > 0.1)[0],
+)
+# import ipdb; ipdb.set_trace()
+
+# data = data[:, nonzerovar_idx]
 data_slice1 = data_slice1[:, nonzerovar_idx]
 data_slice2 = data_slice2[:, nonzerovar_idx]
 
-# import ipdb
+assert np.array_equal(data_slice1.var.gene_ids.values, data_slice2.var.gene_ids.values)
 
-# ipdb.set_trace()
-
-data_knn = data_slice1 #[:, shared_gene_names]
-X_knn = data_knn.obsm["spatial"]
-Y_knn = np.array(data_knn.X.todense())
-Y_knn = (Y_knn - Y_knn.mean(0)) / Y_knn.std(0)
-# nbrs = NearestNeighbors(n_neighbors=2).fit(X_knn)
-# distances, indices = nbrs.kneighbors(X_knn)
-
-knn = KNeighborsRegressor(n_neighbors=10, weights="uniform").fit(X_knn, Y_knn)
-preds = knn.predict(X_knn)
-
-# preds = Y_knn[indices[:, 1]]
-r2_vals = r2_score(Y_knn, preds, multioutput="raw_values")
-
-gene_idx_to_keep = np.where(r2_vals > 0.3)[0]
-N_GENES = min(N_GENES, len(gene_idx_to_keep))
-gene_names_to_keep = data_knn.var.gene_ids.index.values[gene_idx_to_keep]
-gene_names_to_keep = gene_names_to_keep[np.argsort(-r2_vals[gene_idx_to_keep])]
-r2_vals_sorted = -1 * np.sort(-r2_vals[gene_idx_to_keep])
-if N_GENES < len(gene_names_to_keep):
-    gene_names_to_keep = gene_names_to_keep[:N_GENES]
-data = data[:, gene_names_to_keep]
-
-
-# if N_SAMPLES is not None:
-#     rand_idx = np.random.choice(
-#         np.arange(data_slice1.shape[0]), size=N_SAMPLES, replace=False
-#     )
-#     data_slice1 = data_slice1[rand_idx]
-#     rand_idx = np.random.choice(
-#         np.arange(data_slice2.shape[0]), size=N_SAMPLES, replace=False
-#     )
-#     data_slice2 = data_slice2[rand_idx]
-
-#     # rand_idx = np.random.choice(
-#     #     np.arange(data.shape[0]), size=N_SAMPLES * 2, replace=False
-#     # )
-#     # data = data[rand_idx]
-# data = data_slice1.concatenate(data_slice2)
 
 all_slices = anndata.concat([data_slice1, data_slice2])
+data = data_slice1.concatenate(data_slice2)
+# import ipdb; ipdb.set_trace()
 n_samples_list = [data[data.obs.batch == str(ii)].shape[0] for ii in range(n_views)]
 
 X1 = np.array(data[data.obs.batch == "0"].obsm["spatial"])
 X2 = np.array(data[data.obs.batch == "1"].obsm["spatial"])
 Y1 = np.array(data[data.obs.batch == "0"].X.todense())
 Y2 = np.array(data[data.obs.batch == "1"].X.todense())
+
+# X1 = np.array(data_slice1.obsm["spatial"])
+# X2 = np.array(data_slice2.obsm["spatial"])
+# Y1 = np.array(data_slice1.X.todense())
+# Y2 = np.array(data_slice2.X.todense())
 
 
 Y1 = (Y1 - Y1.mean(0)) / Y1.std(0)
@@ -272,12 +209,6 @@ for repeat_idx in range(N_REPEATS):
     second_view_idx = view_idx[1]
     n_drop = int(1.0 * n_samples_list[1] * FRAC_TEST)
     test_idx = np.random.choice(second_view_idx, size=n_drop, replace=False)
-
-    ## Only test on interior of tissue
-    interior_idx = np.where(
-        (X[:, 0] > 2.5) & (X[:, 0] < 7.5) & (X[:, 1] > 2.5) & (X[:, 1] < 7.5)
-    )[0]
-    test_idx = np.intersect1d(interior_idx, test_idx)
     n_drop = test_idx.shape[0]
 
     keep_idx = np.setdiff1d(second_view_idx, test_idx)
@@ -293,13 +224,6 @@ for repeat_idx in range(N_REPEATS):
 
     X_test = X[test_idx]
     Y_test = Y[test_idx]
-
-    gene_idx_to_keep = np.logical_and(np.var(Y_train, axis=0) > 1e-1, np.var(Y_test, axis=0) > 1e-1)
-    GENE_IDX_TO_TEST = np.intersect1d(GENE_IDX_TO_TEST, gene_idx_to_keep)
-    Y_train = Y_train[:, gene_idx_to_keep]
-    Y_test = Y_test[:, gene_idx_to_keep]
-
-    # import ipdb; ipdb.set_trace()
 
     x_train = torch.from_numpy(X_train).float().clone()
     y_train = torch.from_numpy(Y_train).float().clone()
@@ -321,7 +245,6 @@ for repeat_idx in range(N_REPEATS):
             "n_samples_list": n_samples_list_test,
         }
     }
-    
 
     model = VariationalGPSA(
         data_dict_train,
@@ -344,28 +267,28 @@ for repeat_idx in range(N_REPEATS):
     view_idx_test, Ns_test, _, _ = model.create_view_idx_dict(data_dict_test)
 
     ## Make predictions for naive alignment
-    gpr_union = GaussianProcessRegressor(kernel=RBF() + WhiteKernel())
-    gpr_union.fit(X=X_train, y=Y_train)
-    preds = gpr_union.predict(X_test)
+    # gpr_union = GaussianProcessRegressor(kernel=RBF() + WhiteKernel())
+    # gpr_union.fit(X=X_train, y=Y_train)
+    # preds = gpr_union.predict(X_test)
 
-    knn = KNeighborsRegressor(n_neighbors=10)
+    knn = KNeighborsRegressor(n_neighbors=10, weights="distance")
     knn.fit(X=X_train, y=Y_train)
     preds = knn.predict(X_test)
-    
+
     # error_union = np.mean(np.sum((preds - Y_test) ** 2, axis=1))
-    error_union = r2_score(Y_test[:, GENE_IDX_TO_TEST], preds[:, GENE_IDX_TO_TEST]) #, multioutput="raw_values")
+    error_union = r2_score(Y_test, preds, multioutput="raw_values")
+    # print(len(preds))
 
     errors_union.append(error_union)
-    print("MSE, union: {}".format(round(error_union, 5)), flush=True)
+    print("MSE, union: {}".format(round(np.mean(error_union), 5)), flush=True)
     #
     # print("R2, union: {}".format(round(r2_union, 5)))
-    # import ipdb; ipdb.set_trace()
 
     ## Make predictons for each view separately
     preds, truth = [], []
 
     for vv in range(n_views):
-        
+
         curr_trainX = X_train[view_idx_train["expression"][vv]]
         curr_trainY = Y_train[view_idx_train["expression"][vv]]
         curr_testX = X_test[view_idx_test["expression"][vv]]
@@ -377,7 +300,7 @@ for repeat_idx in range(N_REPEATS):
         # gpr_separate.fit(X=curr_trainX, y=curr_trainY)
         # curr_preds = gpr_separate.predict(curr_testX)
 
-        knn = KNeighborsRegressor(n_neighbors=10)
+        knn = KNeighborsRegressor(n_neighbors=10, weights="distance")
         knn.fit(X=curr_trainX, y=curr_trainY)
         curr_preds = knn.predict(curr_testX)
 
@@ -387,9 +310,9 @@ for repeat_idx in range(N_REPEATS):
     preds = np.concatenate(preds, axis=0)
     truth = np.concatenate(truth, axis=0)
     # error_separate = np.mean(np.sum((preds - truth) ** 2, axis=1))
-    error_separate = r2_score(truth[:, GENE_IDX_TO_TEST], preds[:, GENE_IDX_TO_TEST])
+    error_separate = r2_score(truth, preds, multioutput="raw_values")
 
-    print("MSE, separate: {}".format(round(error_separate, 5)), flush=True)
+    print("MSE, separate: {}".format(round(np.mean(error_separate), 5)), flush=True)
 
     # print("R2, sep: {}".format(round(r2_sep, 5)))
 
@@ -439,21 +362,21 @@ for repeat_idx in range(N_REPEATS):
 
             curr_preds = torch.mean(F_samples_test["expression"], dim=0)
 
-            # callback_twod(
-            #     model,
-            #     X_train,
-            #     Y_train,
-            #     data_expression_ax=data_expression_ax,
-            #     latent_expression_ax=latent_expression_ax,
-            #     # prediction_ax=ax_dict["preds"],
-            #     X_aligned=G_means,
-            #     # X_test=X_test,
-            #     # Y_test_true=Y_test,
-            #     # Y_pred=curr_preds,
-            #     # X_test_aligned=G_means_test,
-            # )
-            # plt.draw()
-            # plt.pause(1 / 60.0)
+            callback_twod(
+                model,
+                X_train,
+                Y_train,
+                data_expression_ax=data_expression_ax,
+                latent_expression_ax=latent_expression_ax,
+                # prediction_ax=ax_dict["preds"],
+                X_aligned=G_means,
+                # X_test=X_test,
+                # Y_test_true=Y_test,
+                # Y_pred=curr_preds,
+                # X_test_aligned=G_means_test,
+            )
+            plt.draw()
+            plt.pause(1 / 60.0)
 
             error_gpsa = np.mean(
                 np.sum((Y_test - curr_preds.detach().numpy()) ** 2, axis=1)
@@ -469,12 +392,15 @@ for repeat_idx in range(N_REPEATS):
                 # gpr_gpsa = GaussianProcessRegressor(kernel=RBF() + WhiteKernel())
                 # gpr_gpsa.fit(X=curr_aligned_coords, y=Y_train)
                 # preds = gpr_gpsa.predict(curr_aligned_coords_test)
-                knn = KNeighborsRegressor(n_neighbors=10)
+                knn = KNeighborsRegressor(n_neighbors=10, weights="distance")
                 knn.fit(X=curr_aligned_coords, y=Y_train)
                 preds = knn.predict(curr_aligned_coords_test)
                 # error_gpsa = np.mean(np.sum((preds - Y_test) ** 2, axis=1))
-                error_gpsa = r2_score(Y_test[:, GENE_IDX_TO_TEST], preds[:, GENE_IDX_TO_TEST])
-                print("MSE, GPSA GPR: {}".format(round(error_gpsa, 5)), flush=True)
+                error_gpsa = r2_score(Y_test, preds, multioutput="raw_values")
+                print(
+                    "MSE, GPSA GPR: {}".format(round(np.mean(error_gpsa), 5)),
+                    flush=True,
+                )
             except:
                 continue
 
@@ -482,15 +408,22 @@ for repeat_idx in range(N_REPEATS):
 
     plt.close()
 
+    errors_union_arr = np.array(errors_union)
+    errors_separate_arr = np.array(errors_separate)
+    errors_gpsa_arr = np.array(errors_gpsa)
+    pd.DataFrame(errors_union_arr).to_csv("./out/prediction_errors_union.csv")
+    pd.DataFrame(errors_separate_arr).to_csv("./out/prediction_errors_separate.csv")
+    pd.DataFrame(errors_gpsa_arr).to_csv("./out/prediction_errors_gpsa.csv")
+
     results_df = pd.DataFrame(
         {
-            "Union": errors_union[: repeat_idx + 1],
-            "Separate": errors_separate[: repeat_idx + 1],
-            "GPSA": errors_gpsa[: repeat_idx + 1],
+            "Union": np.mean(errors_union_arr, axis=1),
+            "Separate": np.mean(errors_separate_arr, axis=1),
+            "GPSA": np.mean(errors_gpsa_arr, axis=1),
         }
     )
     results_df_melted = pd.melt(results_df)
-    results_df_melted.to_csv("./out/twod_prediction_slideseq.csv")
+    # results_df_melted.to_csv("./out/twod_prediction_visium.csv")
 
     plt.figure(figsize=(7, 5))
     sns.boxplot(data=results_df_melted, x="variable", y="value", color="gray")

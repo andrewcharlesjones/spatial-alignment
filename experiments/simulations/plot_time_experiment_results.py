@@ -10,7 +10,7 @@ matplotlib.rc("font", **font)
 matplotlib.rcParams["text.usetex"] = True
 
 results = pd.read_csv("./out/time_experiment_results.csv")
-results["value"] /= 60.
+results["value"] /= 60.0
 
 plt.figure(figsize=(10, 5))
 g = sns.lineplot(data=results, x="variable", y="value", hue="method")

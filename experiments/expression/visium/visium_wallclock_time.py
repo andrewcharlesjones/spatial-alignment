@@ -87,20 +87,20 @@ def process_data(adata, n_top_genes=2000):
 data_slice1 = sc.read_visium(pjoin(DATA_DIR, "sample1"))
 data_slice1 = process_data(data_slice1, n_top_genes=6000)
 
-plt.figure(figsize=(10, 5))
-plt.subplot(121)
-sc.pl.spatial(
-    data_slice1, color=["mt-Co1"], spot_size=150, img_key=None, ax=plt.gca(), show=False
-)
-plt.subplot(122)
-sc.pl.spatial(
-    data_slice1, color=["Camk2a"], spot_size=150, img_key=None, ax=plt.gca(), show=False
-)
-plt.savefig("./out/visium_dophin_genes.png")
-plt.show()
-import ipdb
+# plt.figure(figsize=(10, 5))
+# plt.subplot(121)
+# sc.pl.spatial(
+#     data_slice1, color=["mt-Co1"], spot_size=150, img_key=None, ax=plt.gca(), show=False
+# )
+# plt.subplot(122)
+# sc.pl.spatial(
+#     data_slice1, color=["Camk2a"], spot_size=150, img_key=None, ax=plt.gca(), show=False
+# )
+# plt.savefig("./out/visium_dophin_genes.png")
+# plt.show()
+# import ipdb
 
-ipdb.set_trace()
+# ipdb.set_trace()
 
 data_slice2 = sc.read_visium(pjoin(DATA_DIR, "sample2"))
 data_slice2 = process_data(data_slice2, n_top_genes=6000)
@@ -258,100 +258,104 @@ plt.show(block=False)
 # gene_idx = np.where(data.var.gene_ids.index.values == "Ptgds")[0]
 gene_idx = 0
 
-pd.DataFrame(view_idx["expression"]).to_csv("./out/view_idx_visium.csv")
-pd.DataFrame(X).to_csv("./out/X_visium.csv")
-pd.DataFrame(Y).to_csv("./out/Y_visium.csv")
-data.write("./out/data_visium.h5")
+# pd.DataFrame(view_idx["expression"]).to_csv("./out/view_idx_visium.csv")
+# pd.DataFrame(X).to_csv("./out/X_visium.csv")
+# pd.DataFrame(Y).to_csv("./out/Y_visium.csv")
+# data.write("./out/data_visium.h5")
 
 for t in range(N_EPOCHS):
+    start = time.time()
     loss, G_means = train(model, model.loss_fn, optimizer)
+    end = time.time()
+    timespan = end - start
+    print(timespan, flush=True)
     # print(model.warp_kernel_lengthscales)
     # print(model.warp_kernel_variances)
     # print("\n")
 
-    if t % PRINT_EVERY == 0:
-        print("Iter: {0:<10} LL {1:1.3e}".format(t, -loss), flush=True)
-        diff_expression_ax.cla()
+    # if t % PRINT_EVERY == 0:
+    #     print("Iter: {0:<10} LL {1:1.3e}".format(t, -loss), flush=True)
+    #     diff_expression_ax.cla()
 
-        callback_twod_aligned_only(
-            model,
-            X,
-            Y,
-            latent_expression_ax1=data_expression_ax,
-            latent_expression_ax2=latent_expression_ax,
-            X_aligned=G_means,
-            gene_idx=gene_idx,
-        )
+    #     callback_twod_aligned_only(
+    #         model,
+    #         X,
+    #         Y,
+    #         latent_expression_ax1=data_expression_ax,
+    #         latent_expression_ax2=latent_expression_ax,
+    #         X_aligned=G_means,
+    #         gene_idx=gene_idx,
+    #     )
 
-        curr_aligned_coords = G_means["expression"].detach().numpy()
+    #     curr_aligned_coords = G_means["expression"].detach().numpy()
 
-        # nearestneighbors = KNeighborsRegressor(n_neighbors=5) # weights="distance")
+    #     # nearestneighbors = KNeighborsRegressor(n_neighbors=5) # weights="distance")
 
-        # nearestneighbors.fit(
-        #     curr_aligned_coords[view_idx["expression"][0]], Y[view_idx["expression"][0]]
-        # )
-        # Y2_smoothed = nearestneighbors.predict(
-        #     curr_aligned_coords[view_idx["expression"][1]]
-        # )
-        X_knn = curr_aligned_coords[view_idx["expression"][0]]
-        Y_knn = Y[view_idx["expression"][0]]
-        nbrs = NearestNeighbors(n_neighbors=2).fit(X_knn)
-        distances, indices = nbrs.kneighbors(
-            curr_aligned_coords[view_idx["expression"][1]]
-        )
+    #     # nearestneighbors.fit(
+    #     #     curr_aligned_coords[view_idx["expression"][0]], Y[view_idx["expression"][0]]
+    #     # )
+    #     # Y2_smoothed = nearestneighbors.predict(
+    #     #     curr_aligned_coords[view_idx["expression"][1]]
+    #     # )
+    #     X_knn = curr_aligned_coords[view_idx["expression"][0]]
+    #     Y_knn = Y[view_idx["expression"][0]]
+    #     nbrs = NearestNeighbors(n_neighbors=2).fit(X_knn)
+    #     distances, indices = nbrs.kneighbors(
+    #         curr_aligned_coords[view_idx["expression"][1]]
+    #     )
 
-        Y2_smoothed = Y_knn[indices[:, 1]]
-        # import ipdb; ipdb.set_trace()
-        r2_val = r2_score(Y[view_idx["expression"][1]], Y2_smoothed)
-        print(r2_val, flush=True)
+    #     Y2_smoothed = Y_knn[indices[:, 1]]
+    #     # import ipdb; ipdb.set_trace()
+    #     r2_val = r2_score(Y[view_idx["expression"][1]], Y2_smoothed)
+    #     print(r2_val, flush=True)
 
-        Y_diffs = Y[view_idx["expression"][1]] - Y2_smoothed
+    #     Y_diffs = Y[view_idx["expression"][1]] - Y2_smoothed
 
-        # print(np.nanmean(Y_diffs ** 2), flush=True)
+    #     # print(np.nanmean(Y_diffs ** 2), flush=True)
 
-        diff_expression_ax.scatter(
-            curr_aligned_coords[view_idx["expression"][1]][:, 0],
-            curr_aligned_coords[view_idx["expression"][1]][:, 1],
-            c=Y_diffs[:, gene_idx].ravel(),
-            cmap="bwr",
-            s=24,
-            marker="H",
-        )
+    #     diff_expression_ax.scatter(
+    #         curr_aligned_coords[view_idx["expression"][1]][:, 0],
+    #         curr_aligned_coords[view_idx["expression"][1]][:, 1],
+    #         c=Y_diffs[:, gene_idx].ravel(),
+    #         cmap="bwr",
+    #         s=24,
+    #         marker="H",
+    #     )
 
-        plt.draw()
-        plt.savefig("./out/visium_aligned_difference_one_gene.png")
-        plt.pause(1 / 60.0)
+    #     plt.draw()
+    #     # plt.savefig("./out/visium_aligned_difference_one_gene.png")
+    #     # plt.pause(1 / 60.0)
 
-        pd.DataFrame(curr_aligned_coords).to_csv("./out/aligned_coords_visium.csv")
+    #     # pd.DataFrame(curr_aligned_coords).to_csv("./out/aligned_coords_visium.csv")
 
-        # import ipdb; ipdb.set_trace()
+    #     # import ipdb; ipdb.set_trace()
 
 
 plt.close()
 
-import matplotlib
+# import matplotlib
 
-font = {"size": 30}
-matplotlib.rc("font", **font)
-matplotlib.rcParams["text.usetex"] = True
+# font = {"size": 30}
+# matplotlib.rc("font", **font)
+# matplotlib.rcParams["text.usetex"] = True
 
-fig = plt.figure(figsize=(14, 7))
-data_expression_ax = fig.add_subplot(121, frameon=False)
-latent_expression_ax = fig.add_subplot(122, frameon=False)
-callback_twod(
-    model,
-    X,
-    Y,
-    data_expression_ax=data_expression_ax,
-    latent_expression_ax=latent_expression_ax,
-    X_aligned=G_means,
-)
-latent_expression_ax.set_title("Aligned data, GPSA")
-latent_expression_ax.set_axis_off()
-data_expression_ax.set_axis_off()
-# plt.axis("off")
+# fig = plt.figure(figsize=(14, 7))
+# data_expression_ax = fig.add_subplot(121, frameon=False)
+# latent_expression_ax = fig.add_subplot(122, frameon=False)
+# callback_twod(
+#     model,
+#     X,
+#     Y,
+#     data_expression_ax=data_expression_ax,
+#     latent_expression_ax=latent_expression_ax,
+#     X_aligned=G_means,
+# )
+# latent_expression_ax.set_title("Aligned data, GPSA")
+# latent_expression_ax.set_axis_off()
+# data_expression_ax.set_axis_off()
+# # plt.axis("off")
 
-plt.tight_layout()
-plt.savefig("./out/visium_alignment.png")
-# plt.show()
-plt.close()
+# plt.tight_layout()
+# plt.savefig("./out/visium_alignment.png")
+# # plt.show()
+# plt.close()
