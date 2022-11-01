@@ -36,7 +36,9 @@ X2 = data2[["centroid-0", "centroid-1"]].values
 
 # Get overlapping marker names
 marker_col_idx = np.arange(1, 47)
-overlapping_markers = np.intersect1d(data1.columns.values[marker_col_idx], data2.columns.values[marker_col_idx])
+overlapping_markers = np.intersect1d(
+    data1.columns.values[marker_col_idx], data2.columns.values[marker_col_idx]
+)
 
 # Marker data for immune cells
 Y1 = data1[overlapping_markers].values

@@ -103,8 +103,8 @@ class VariationalGPSA(GPSA):
                 xlimits = [xlow, xhigh]
                 ylimits = [ylow, yhigh]
                 numticks = np.ceil(np.sqrt(self.m_G)).astype(int)
-                self.m_G = numticks ** 2
-                self.m_X_per_view = numticks ** 2
+                self.m_G = numticks**2
+                self.m_X_per_view = numticks**2
                 x1s = np.linspace(*xlimits, num=numticks)
                 x2s = np.linspace(*ylimits, num=numticks)
                 X1, X2 = np.meshgrid(x1s, x2s)
@@ -129,7 +129,8 @@ class VariationalGPSA(GPSA):
 
         ## Variational covariance parameters
         Omega_sqt_G_list = torch.zeros(
-            [self.n_views * self.n_spatial_dims, self.m_X_per_view, self.m_X_per_view], device=device
+            [self.n_views * self.n_spatial_dims, self.m_X_per_view, self.m_X_per_view],
+            device=device,
         )
         for ii in range(self.n_views):
             for jj in range(self.n_spatial_dims):
@@ -203,13 +204,10 @@ class VariationalGPSA(GPSA):
         return mu_tilde, Sigma_tilde + self.diagonal_offset
 
     def get_Omega_from_Omega_sqt(self, Omega_sqt):
-        return (
-            torch.matmul(
-                Omega_sqt,
-                torch.transpose(Omega_sqt, -1, -2),
-            )
-            + self.diagonal_offset * torch.eye(Omega_sqt.shape[-1], device=device)
-        )
+        return torch.matmul(
+            Omega_sqt,
+            torch.transpose(Omega_sqt, -1, -2),
+        ) + self.diagonal_offset * torch.eye(Omega_sqt.shape[-1], device=device)
 
     def forward(self, X_spatial, view_idx, Ns, S=1, prediction_mode=False, G_test=None):
 
@@ -219,7 +217,10 @@ class VariationalGPSA(GPSA):
         self.noise_variance_pos = torch.exp(self.noise_variance) + self.diagonal_offset
 
         self.mu_z_G = (
-            torch.zeros([self.n_views, self.m_X_per_view, self.n_spatial_dims], device=device) * np.nan
+            torch.zeros(
+                [self.n_views, self.m_X_per_view, self.n_spatial_dims], device=device
+            )
+            * np.nan
         )
         for vv in range(self.n_views):
             self.mu_z_G[vv] = (
@@ -234,15 +235,22 @@ class VariationalGPSA(GPSA):
                 self.mu_z_G[vv] *= 100.0
 
         self.Kuu_chol_list = (
-            torch.zeros([self.n_views, self.m_X_per_view, self.m_X_per_view], device=device) * np.nan
+            torch.zeros(
+                [self.n_views, self.m_X_per_view, self.m_X_per_view], device=device
+            )
+            * np.nan
         )
         G_samples = {}
         for mod in self.modality_names:
-            G_samples[mod] = torch.zeros([S, Ns[mod], self.n_spatial_dims], device=device) * np.nan
+            G_samples[mod] = (
+                torch.zeros([S, Ns[mod], self.n_spatial_dims], device=device) * np.nan
+            )
 
         G_means = {}
         for mod in self.modality_names:
-            G_means[mod] = torch.zeros([Ns[mod], self.n_spatial_dims], device=device) * np.nan
+            G_means[mod] = (
+                torch.zeros([Ns[mod], self.n_spatial_dims], device=device) * np.nan
+            )
 
         curr_Omega_G = self.get_Omega_from_Omega_sqt(self.Omega_sqt_G_list)
 
@@ -394,9 +402,9 @@ class VariationalGPSA(GPSA):
             #     kernel_F(G_samples[mod], G_samples[mod], diag=True)
             #     + self.diagonal_offset
             # )
-            Kff_diag = torch.ones((G_samples[mod].shape[:2]), device=device) * torch.exp(
-                self.data_kernel_variance
-            )
+            Kff_diag = torch.ones(
+                (G_samples[mod].shape[:2]), device=device
+            ) * torch.exp(self.data_kernel_variance)
 
             Kuf = kernel_F(self.Gtilde, G_samples[mod])
             curr_Omega = self.get_Omega_from_Omega_sqt(self.Omega_sqt_F_dict[mod])
@@ -432,11 +440,15 @@ class VariationalGPSA(GPSA):
                 #     kernel_F(G_samples[mod], G_samples[mod], diag=True)
                 #     + self.diagonal_offset
                 # )
-                Kff_diag = torch.ones((G_test[mod].shape[:2]), device=device) * torch.exp(
+                Kff_diag = torch.ones(
+                    (G_test[mod].shape[:2]), device=device
+                ) * torch.exp(
                     self.data_kernel_variance,
                 )
 
-                mu_x_F = torch.zeros([G_test[mod].shape[1], self.n_latent_outputs[mod]], device=device)
+                mu_x_F = torch.zeros(
+                    [G_test[mod].shape[1], self.n_latent_outputs[mod]], device=device
+                )
 
                 Kuf = kernel_F(self.Gtilde, G_test[mod])
 

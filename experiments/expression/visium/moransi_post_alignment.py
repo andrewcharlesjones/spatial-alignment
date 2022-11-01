@@ -126,15 +126,11 @@ if __name__ == "__main__":
     # )
     new_and_significant = np.logical_and(
         (moran_scores.pval_norm_fdr_bh_gpsa < 0.01).values,
-        (
-            moran_scores.pval_norm_fdr_bh_union > 0.01
-        ).values,
+        (moran_scores.pval_norm_fdr_bh_union > 0.01).values,
     )
     old_and_significant = np.logical_and(
         (moran_scores.pval_norm_fdr_bh_gpsa < 0.01).values,
-        (
-            moran_scores.pval_norm_fdr_bh_union < 0.01
-        ).values,
+        (moran_scores.pval_norm_fdr_bh_union < 0.01).values,
     )
     moran_scores["new_and_significant"] = new_and_significant
 
@@ -146,16 +142,26 @@ if __name__ == "__main__":
     #         new_and_significant_strs.append("Pre-alignment hit\n" + r"($p < 0.01$)")
     #     else:
     #         new_and_significant_strs.append("")
-    new_and_significant_strs = np.array(["GPSA-specific hit\n" + r"($p < 0.01$)" if x else "" for x in new_and_significant])
+    new_and_significant_strs = np.array(
+        [
+            "GPSA-specific hit\n" + r"($p < 0.01$)" if x else ""
+            for x in new_and_significant
+        ]
+    )
     # new_and_significant_strs[np.where(old_and_significant)[0]] = "Prealignment hit\n" + r"($p < 0.01$)"
     moran_scores["new_and_significant_str"] = new_and_significant_strs
     # moran_scores[moran_scores["new_and_significant"] == True]["new_and_significant"] = r"GPSA hit ($p < 0.01$)"
     # moran_scores[moran_scores["new_and_significant"] == False]["new_and_significant"] = ""
-    g = sns.scatterplot(data=moran_scores, x="I_union", y="I_gpsa", hue="new_and_significant_str", edgecolor=None)
+    g = sns.scatterplot(
+        data=moran_scores,
+        x="I_union",
+        y="I_gpsa",
+        hue="new_and_significant_str",
+        edgecolor=None,
+    )
 
-    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize=20)
+    plt.legend(loc="center left", bbox_to_anchor=(1, 0.5), fontsize=20)
     g.legend_.set_title(None)
-    
 
     plt.xlim([0, 1])
     plt.ylim([0, 1])
@@ -168,7 +174,11 @@ if __name__ == "__main__":
     plt.savefig("./out/moransi_post_alignment.png")
     plt.show()
 
-    print((moran_scores[["pval_norm_fdr_bh_union", "pval_norm_fdr_bh_gpsa"]] < 1e-4).sum(0))
+    print(
+        (moran_scores[["pval_norm_fdr_bh_union", "pval_norm_fdr_bh_gpsa"]] < 1e-4).sum(
+            0
+        )
+    )
     # import ipdb; ipdb.set_trace()
 
     # plt.subplot(122)

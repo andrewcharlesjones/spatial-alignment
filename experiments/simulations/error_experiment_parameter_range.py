@@ -40,15 +40,23 @@ true_noise_variance = 1e-3
 
 n_repeats = 5
 
-fixed_warp_spatial_variance_list = np.unique(np.concatenate([
-    np.linspace(true_warp_spatial_variance / 10, true_warp_spatial_variance, 4),
-    np.linspace(true_warp_spatial_variance, true_warp_spatial_variance * 3, 4)
-]))
+fixed_warp_spatial_variance_list = np.unique(
+    np.concatenate(
+        [
+            np.linspace(true_warp_spatial_variance / 10, true_warp_spatial_variance, 4),
+            np.linspace(true_warp_spatial_variance, true_warp_spatial_variance * 3, 4),
+        ]
+    )
+)
 # fixed_warp_spatial_variance_list = np.linspace(0.1, 5, 7)
-fixed_warp_lengthscale_list = np.unique(np.concatenate([
-    np.linspace(true_warp_lengthscale / 3, true_warp_lengthscale, 4),
-    np.linspace(true_warp_lengthscale, true_warp_lengthscale * 3, 4)
-]))
+fixed_warp_lengthscale_list = np.unique(
+    np.concatenate(
+        [
+            np.linspace(true_warp_lengthscale / 3, true_warp_lengthscale, 4),
+            np.linspace(true_warp_lengthscale, true_warp_lengthscale * 3, 4),
+        ]
+    )
+)
 
 spatial_variance_errors = np.zeros((n_repeats, len(fixed_warp_spatial_variance_list)))
 lengthscale_errors = np.zeros((n_repeats, len(fixed_warp_lengthscale_list)))
@@ -78,7 +86,6 @@ for ii in range(n_repeats):
         }
     }
 
-
     for jj, fixed_warp_spatial_variance in enumerate(fixed_warp_spatial_variance_list):
 
         model = VariationalGPSA(
@@ -98,13 +105,15 @@ for ii in range(n_repeats):
                 fixed_warp_spatial_variance,
                 fixed_warp_spatial_variance,
             ],
-            fixed_warp_kernel_lengthscales=[true_warp_lengthscale, true_warp_lengthscale],
+            fixed_warp_kernel_lengthscales=[
+                true_warp_lengthscale,
+                true_warp_lengthscale,
+            ],
         ).to(device)
 
         view_idx, Ns, _, _ = model.create_view_idx_dict(data_dict)
 
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
-
 
         def train(model, loss_fn, optimizer):
             model.train()
@@ -124,7 +133,6 @@ for ii in range(n_repeats):
 
             return loss.item()
 
-
         # Set up figure.
         fig = plt.figure(figsize=(14, 7), facecolor="white", constrained_layout=True)
         data_expression_ax = fig.add_subplot(121, frameon=False)
@@ -136,7 +144,9 @@ for ii in range(n_repeats):
 
             if t % PRINT_EVERY == 0:
                 print("Iter: {0:<10} LL {1:1.3e}".format(t, -loss))
-                G_means, _, _, _ = model.forward({"expression": x}, view_idx=view_idx, Ns=Ns)
+                G_means, _, _, _ = model.forward(
+                    {"expression": x}, view_idx=view_idx, Ns=Ns
+                )
 
                 callback_twod(
                     model,
@@ -154,14 +164,20 @@ for ii in range(n_repeats):
         n_samples_per_view = n_samples_per_view = X.shape[0] // N_VIEWS
         view1_aligned_coords = aligned_coords[:n_samples_per_view]
         view2_aligned_coords = aligned_coords[n_samples_per_view:]
-        err = np.mean(np.sum((view1_aligned_coords - view2_aligned_coords) ** 2, axis=1))
+        err = np.mean(
+            np.sum((view1_aligned_coords - view2_aligned_coords) ** 2, axis=1)
+        )
 
         spatial_variance_errors[ii, jj] = err
         print("ERROR: ", round(err, 3))
         plt.close()
 
-spatial_variance_errors_df = pd.melt(pd.DataFrame(spatial_variance_errors, columns=fixed_warp_spatial_variance_list))
-spatial_variance_errors_df.to_csv("./out/error_experiment_parameter_range_spatial_variance.csv")
+spatial_variance_errors_df = pd.melt(
+    pd.DataFrame(spatial_variance_errors, columns=fixed_warp_spatial_variance_list)
+)
+spatial_variance_errors_df.to_csv(
+    "./out/error_experiment_parameter_range_spatial_variance.csv"
+)
 
 plt.figure(figsize=(7, 5))
 sns.boxplot(data=spatial_variance_errors_df, x="variable", y="value")
@@ -171,11 +187,6 @@ plt.tight_layout()
 plt.savefig("./out/error_experiment_parameter_range_spatial_variance.png")
 # plt.show()
 plt.close()
-
-
-
-
-
 
 
 # #### Lengthscale
@@ -298,5 +309,5 @@ plt.close()
 # plt.close()
 
 import ipdb
+
 ipdb.set_trace()
-        

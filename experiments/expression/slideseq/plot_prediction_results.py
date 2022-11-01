@@ -100,7 +100,6 @@ plt.savefig("./out/two_d_prediction_comparison_slideseq.png")
 plt.show()
 
 
-
 preds = pd.read_csv("./out/slideseq_preds_gpsa.csv", index_col=0)
 truth = pd.read_csv("./out/slideseq_truth_gpsa.csv", index_col=0)
 
@@ -121,14 +120,18 @@ gene_names = pd.read_csv("./out/slideseq_pred_gene_names.csv").iloc[:, 0].values
 
 for ii, gene_idx in enumerate(sorted_idx[-n_genes_to_plot:]):
     plt.subplot(2, n_genes_to_plot, ii + 1)
-    plt.scatter(truth.iloc[:, gene_idx].values, preds.iloc[:, gene_idx].values, c="gray")
+    plt.scatter(
+        truth.iloc[:, gene_idx].values, preds.iloc[:, gene_idx].values, c="gray"
+    )
     plt.xlabel("True expression")
     plt.ylabel("Predicted expression")
     plt.title(r"$\emph{" + gene_names[gene_idx].upper() + "}$")
 
 for ii, gene_idx in enumerate(sorted_idx[:n_genes_to_plot]):
     plt.subplot(2, n_genes_to_plot, ii + 4)
-    plt.scatter(truth.iloc[:, gene_idx].values, preds.iloc[:, gene_idx].values, c="gray")
+    plt.scatter(
+        truth.iloc[:, gene_idx].values, preds.iloc[:, gene_idx].values, c="gray"
+    )
     plt.xlabel("True expression")
     plt.ylabel("Predicted expression")
     plt.title(r"$\emph{" + gene_names[gene_idx].upper() + "}$")

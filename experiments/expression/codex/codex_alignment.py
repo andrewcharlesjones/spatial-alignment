@@ -19,19 +19,20 @@ data_sample2 = data.iloc[sample2_idx, :]
 xtilespan = 1344
 ytilespan = 1008
 
+
 def tile_spatial_coordinates(data_df):
 
-	if "xcoord" in data_df.columns or "ycoord" in data_df.columns:
-		raise Exception("DataFrame already contains scaled coordinates.")
+    if "xcoord" in data_df.columns or "ycoord" in data_df.columns:
+        raise Exception("DataFrame already contains scaled coordinates.")
 
-	tile_nums_split = data_df.sample_Xtile_Ytile.str.split("_")
-	x_tile_nums = tile_nums_split.str[1].str[1:].values.astype(float)
-	y_tile_nums = tile_nums_split.str[2].str[1:].values.astype(float)
-	xcoords = (x_tile_nums - 1) * xtilespan + data_df["X.X"].values
-	ycoords = (y_tile_nums - 1) * ytilespan + data_df["Y.Y"].values
-	data_df["xcoord"] = xcoords
-	data_df["ycoord"] = ycoords
-	
+    tile_nums_split = data_df.sample_Xtile_Ytile.str.split("_")
+    x_tile_nums = tile_nums_split.str[1].str[1:].values.astype(float)
+    y_tile_nums = tile_nums_split.str[2].str[1:].values.astype(float)
+    xcoords = (x_tile_nums - 1) * xtilespan + data_df["X.X"].values
+    ycoords = (y_tile_nums - 1) * ytilespan + data_df["Y.Y"].values
+    data_df["xcoord"] = xcoords
+    data_df["ycoord"] = ycoords
+
 
 tile_spatial_coordinates(data_sample1)
 tile_spatial_coordinates(data_sample2)
@@ -51,32 +52,32 @@ data_sample2 = data_sample2.iloc[keep_idx]
 
 # ipdb.set_trace()
 for marker in marker_names:
-	plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(10, 5))
 
-	plt.subplot(121)
-	plt.title("Slice 1")
-	curr_data = data_sample1[marker].values
-	curr_data = (curr_data - curr_data.mean()) / curr_data.std()
-	plt.scatter(
-		data_sample1["xcoord"],
-		data_sample1["ycoord"],
-		c=data_sample1[marker],
-		s=1,
-		marker="s",
-	)
+    plt.subplot(121)
+    plt.title("Slice 1")
+    curr_data = data_sample1[marker].values
+    curr_data = (curr_data - curr_data.mean()) / curr_data.std()
+    plt.scatter(
+        data_sample1["xcoord"],
+        data_sample1["ycoord"],
+        c=data_sample1[marker],
+        s=1,
+        marker="s",
+    )
 
-	plt.subplot(122)
-	plt.title("Slice 2")
-	curr_data = data_sample2[marker].values
-	curr_data = (curr_data - curr_data.mean()) / curr_data.std()
-	plt.scatter(
-		data_sample2["xcoord"],
-		data_sample2["ycoord"],
-		c=data_sample2[marker],
-		s=1,
-		marker="s",
-	)
-	plt.show()
+    plt.subplot(122)
+    plt.title("Slice 2")
+    curr_data = data_sample2[marker].values
+    curr_data = (curr_data - curr_data.mean()) / curr_data.std()
+    plt.scatter(
+        data_sample2["xcoord"],
+        data_sample2["ycoord"],
+        c=data_sample2[marker],
+        s=1,
+        marker="s",
+    )
+    plt.show()
 import ipdb
 
 ipdb.set_trace()

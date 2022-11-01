@@ -16,6 +16,7 @@ import squidpy as sq
 from gpsa import VariationalGPSA, rbf_kernel
 import torch
 import sys
+
 sys.path.append("../../../../paste")
 from src.paste import PASTE, visualization
 import scanpy as sc
@@ -40,19 +41,29 @@ DATA_DIR = "../../../data/mouse_brain_slideseq/12_allMTXs_CCF/"
 # In[4]:
 
 
-gene_list = pd.read_table(pjoin(DATA_DIR, "01_Gene_List.txt"), header=None).values.squeeze()
+gene_list = pd.read_table(
+    pjoin(DATA_DIR, "01_Gene_List.txt"), header=None
+).values.squeeze()
 
 metadata_slice1 = pd.read_table(pjoin(DATA_DIR, "MBASS_d1_metadata.tsv"))
 metadata_slice2 = pd.read_table(pjoin(DATA_DIR, "MBASS_d3_metadata.tsv"))
 
-barcodes_slice1 = pd.read_table(pjoin(DATA_DIR, "MBASS_d1_barcodes.txt"), header=None).values.squeeze()
-barcodes_slice2 = pd.read_table(pjoin(DATA_DIR, "MBASS_d3_barcodes.txt"), header=None).values.squeeze()
+barcodes_slice1 = pd.read_table(
+    pjoin(DATA_DIR, "MBASS_d1_barcodes.txt"), header=None
+).values.squeeze()
+barcodes_slice2 = pd.read_table(
+    pjoin(DATA_DIR, "MBASS_d3_barcodes.txt"), header=None
+).values.squeeze()
 
 data_sparse_slice1 = mmread(pjoin(DATA_DIR, "MBASS_d1_matrix.mtx"))
 data_sparse_slice2 = mmread(pjoin(DATA_DIR, "MBASS_d3_matrix.mtx"))
 
-data_slice1 = pd.DataFrame(data_sparse_slice1.toarray(), index=gene_list, columns=barcodes_slice1)
-data_slice2 = pd.DataFrame(data_sparse_slice2.toarray(), index=gene_list, columns=barcodes_slice2)
+data_slice1 = pd.DataFrame(
+    data_sparse_slice1.toarray(), index=gene_list, columns=barcodes_slice1
+)
+data_slice2 = pd.DataFrame(
+    data_sparse_slice2.toarray(), index=gene_list, columns=barcodes_slice2
+)
 
 
 # ## Manually rotate one slice so they have same orientation
@@ -60,9 +71,17 @@ data_slice2 = pd.DataFrame(data_sparse_slice2.toarray(), index=gene_list, column
 # In[19]:
 
 
-rotated_coords_slice1 = rotate_90deg_counterclockwise(rotate_90deg_counterclockwise(rotate_90deg_counterclockwise(metadata_slice1[["Original_x", "Original_y"]].values)))
+rotated_coords_slice1 = rotate_90deg_counterclockwise(
+    rotate_90deg_counterclockwise(
+        rotate_90deg_counterclockwise(
+            metadata_slice1[["Original_x", "Original_y"]].values
+        )
+    )
+)
 X_slice1 = rotated_coords_slice1[~metadata_slice1.isOutsideCCF]
-X_slice2 = metadata_slice2.loc[~metadata_slice2.isOutsideCCF, ["Original_x", "Original_y"]].values
+X_slice2 = metadata_slice2.loc[
+    ~metadata_slice2.isOutsideCCF, ["Original_x", "Original_y"]
+].values
 
 
 # In[20]:
@@ -70,12 +89,12 @@ X_slice2 = metadata_slice2.loc[~metadata_slice2.isOutsideCCF, ["Original_x", "Or
 
 plt.figure(figsize=(10, 5))
 plt.subplot(121)
-plt.scatter(X_slice1[:, 0], X_slice1[:, 1], s=.05) #, c=np.log(Y_slice1 + 1))
+plt.scatter(X_slice1[:, 0], X_slice1[:, 1], s=0.05)  # , c=np.log(Y_slice1 + 1))
 plt.title("Slice 1")
 # plt.axis("off")
 
 plt.subplot(122)
-plt.scatter(X_slice2[:, 0], X_slice2[:, 1], s=.05) #, c=np.log(Y_slice2 + 1))
+plt.scatter(X_slice2[:, 0], X_slice2[:, 1], s=0.05)  # , c=np.log(Y_slice2 + 1))
 plt.title("Slice 2")
 # plt.axis("off")
 plt.show()
@@ -96,7 +115,7 @@ X_slice1 = rotated_coords_slice1[in_slice_idx]
 Y_slice1 = data_slice1.transpose().iloc[in_slice_idx, :n_genes]
 Y_slice1 = Y_slice1.loc[:, Y_slice1.sum(0) > 0]
 anndata_slice1 = anndata.AnnData(Y_slice1)
-anndata_slice1.obsm['spatial'] = X_slice1
+anndata_slice1.obsm["spatial"] = X_slice1
 
 in_slice_idx = np.where(~metadata_slice2.isOutsideCCF.values)[0]
 in_slice_idx = np.random.choice(in_slice_idx, size=n_spots, replace=False)
@@ -105,7 +124,7 @@ X_slice2 = metadata_slice2[["Original_x", "Original_y"]].values[in_slice_idx]
 Y_slice2 = data_slice2.transpose().iloc[in_slice_idx, :n_genes]
 Y_slice2 = Y_slice2.loc[:, Y_slice2.sum(0) > 0]
 anndata_slice2 = anndata.AnnData(Y_slice2)
-anndata_slice2.obsm['spatial'] = X_slice2
+anndata_slice2.obsm["spatial"] = X_slice2
 
 
 # ## Compute spatial autocorrelation (Moran's I) for each gene
@@ -131,7 +150,9 @@ sq.gr.spatial_autocorr(
 
 plt.figure(figsize=(10, 5))
 plt.subplot(121)
-moran_genenames_sorted_slice1 = anndata_slice1.uns["moranI"].index.values #.astype(int)
+moran_genenames_sorted_slice1 = anndata_slice1.uns[
+    "moranI"
+].index.values  # .astype(int)
 plt.hist(anndata_slice1.uns["moranI"].I.values, 30)
 plt.xlabel("Moran's I")
 plt.ylabel("Count")
@@ -139,7 +160,9 @@ plt.title("Slice 1")
 plt.xlim([-0.025, 0.35])
 
 plt.subplot(122)
-moran_genenames_sorted_slice2 = anndata_slice2.uns["moranI"].index.values #.astype(int)
+moran_genenames_sorted_slice2 = anndata_slice2.uns[
+    "moranI"
+].index.values  # .astype(int)
 plt.hist(anndata_slice2.uns["moranI"].I.values, 30)
 plt.xlabel("Moran's I")
 plt.ylabel("Count")
@@ -155,12 +178,28 @@ gene_idx_to_plot = 0
 
 plt.figure(figsize=(10, 5))
 plt.subplot(121)
-plt.scatter(anndata_slice1.obsm["spatial"][:, 0], anndata_slice1.obsm["spatial"][:, 1], c=np.log(anndata_slice1[:, moran_genenames_sorted_slice1[gene_idx_to_plot]].X.squeeze() + 1), s=5)
+plt.scatter(
+    anndata_slice1.obsm["spatial"][:, 0],
+    anndata_slice1.obsm["spatial"][:, 1],
+    c=np.log(
+        anndata_slice1[:, moran_genenames_sorted_slice1[gene_idx_to_plot]].X.squeeze()
+        + 1
+    ),
+    s=5,
+)
 plt.title("Slice 1")
 plt.axis("off")
 
 plt.subplot(122)
-plt.scatter(anndata_slice2.obsm["spatial"][:, 0], anndata_slice2.obsm["spatial"][:, 1], c=np.log(anndata_slice2[:, moran_genenames_sorted_slice1[gene_idx_to_plot]].X.squeeze() + 1), s=5)
+plt.scatter(
+    anndata_slice2.obsm["spatial"][:, 0],
+    anndata_slice2.obsm["spatial"][:, 1],
+    c=np.log(
+        anndata_slice2[:, moran_genenames_sorted_slice1[gene_idx_to_plot]].X.squeeze()
+        + 1
+    ),
+    s=5,
+)
 plt.title("Slice 1")
 plt.axis("off")
 plt.show()
@@ -169,7 +208,9 @@ plt.show()
 # In[25]:
 
 
-genenames_to_keep = np.intersect1d(moran_genenames_sorted_slice1[:30], moran_genenames_sorted_slice2[:30])
+genenames_to_keep = np.intersect1d(
+    moran_genenames_sorted_slice1[:30], moran_genenames_sorted_slice2[:30]
+)
 anndata_slice1 = anndata_slice1[:, genenames_to_keep]
 anndata_slice2 = anndata_slice2[:, genenames_to_keep]
 
@@ -190,7 +231,10 @@ def scale_spatial_coords(X, max_val=10.0):
 
 n_views = 2
 anndata_all_slices = anndata_slice1.concatenate(anndata_slice2)
-n_samples_list = [anndata_all_slices[anndata_all_slices.obs.batch == str(ii)].shape[0] for ii in range(n_views)]
+n_samples_list = [
+    anndata_all_slices[anndata_all_slices.obs.batch == str(ii)].shape[0]
+    for ii in range(n_views)
+]
 
 X1 = np.array(anndata_all_slices[anndata_all_slices.obs.batch == "0"].obsm["spatial"])
 X2 = np.array(anndata_all_slices[anndata_all_slices.obs.batch == "1"].obsm["spatial"])
@@ -260,6 +304,7 @@ view_idx, Ns, _, _ = model.create_view_idx_dict(data_dict)
 
 
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
+
 
 def train(model, loss_fn, optimizer):
     model.train()
@@ -341,7 +386,3 @@ new_slices
 
 
 # In[ ]:
-
-
-
-

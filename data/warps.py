@@ -216,7 +216,9 @@ def apply_linear_warp(
         )
 
         curr_intercepts = np.random.uniform(
-            low=linear_intercept_variance, high=linear_intercept_variance, size=n_spatial_dims
+            low=linear_intercept_variance,
+            high=linear_intercept_variance,
+            size=n_spatial_dims,
         )
         # print(curr_slopes, curr_intercepts)
 
@@ -229,6 +231,7 @@ def apply_linear_warp(
     Y += np.random.normal(scale=np.sqrt(noise_variance), size=Y.shape)
 
     return X, Y, n_samples_list, view_idx
+
 
 def apply_polar_warp(
     X_orig_single,
@@ -283,13 +286,12 @@ def apply_polar_warp(
         X_curr_view_warped = np.array(
             [
                 X_orig_single[:, 0] + r * np.cos(theta),
-                X_orig_single[:, 1] + r * np.sin(theta)
+                X_orig_single[:, 1] + r * np.sin(theta),
             ]
-            ).T
+        ).T
         # import ipdb; ipdb.set_trace()
         # additive_warp = B[:, 0] * X_orig_single * np.vstack([np.cos(X_orig_single[:, 0] * B[0, 1]), np.sin(X_orig_single[:, 1] * B[1, 1])]).T
         # X_curr_view_warped = X_orig_single + additive_warp
-        
 
         # X_curr_view_warped = X_orig_single @ curr_slopes + curr_intercepts
         X[

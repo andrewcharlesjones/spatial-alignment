@@ -234,6 +234,7 @@ view_idx, Ns, _, _ = model.create_view_idx_dict(data_dict)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
 
+
 def train(model, loss_fn, optimizer):
     model.train()
 
@@ -251,6 +252,7 @@ def train(model, loss_fn, optimizer):
     optimizer.step()
 
     return loss.item(), G_means
+
 
 # Set up figure.
 fig = plt.figure(figsize=(10, 5), facecolor="white", constrained_layout=True)

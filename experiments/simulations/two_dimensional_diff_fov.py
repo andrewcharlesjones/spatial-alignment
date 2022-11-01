@@ -14,6 +14,7 @@ from gpsa.plotting import callback_twod
 
 sys.path.append("../../data")
 from simulated.generate_twod_data import generate_twod_data_partial_overlap
+
 # from plotting.callbacks import callback_twod
 # from util import ConvergenceChecker
 
@@ -231,7 +232,7 @@ def two_d_gpsa_diff_fov(
         paste_ax.set_title("PASTE")
 
         markers = ["o", "X"]
-        edgecolors = ["black", "red"] # "gray"]
+        edgecolors = ["black", "red"]  # "gray"]
         sizes = [300, 100]
         linewidth = 3
         alpha_vals = [0.3, 1.0]
@@ -248,7 +249,7 @@ def two_d_gpsa_diff_fov(
                 c=Y[curr_idx][:, 0],
                 marker=markers[vv],
                 s=sizes[vv],
-                edgecolor=None, #edgecolors[vv],
+                edgecolor=None,  # edgecolors[vv],
                 linewidth=linewidth,
                 vmin=minY,
                 vmax=maxY,
@@ -261,7 +262,7 @@ def two_d_gpsa_diff_fov(
                 c=Y[curr_idx][:, 0],
                 marker=markers[vv],
                 s=sizes[vv],
-                edgecolor=None, #edgecolors[vv],
+                edgecolor=None,  # edgecolors[vv],
                 linewidth=linewidth,
                 vmin=minY,
                 vmax=maxY,
@@ -289,7 +290,7 @@ def two_d_gpsa_diff_fov(
                     c=Y[curr_idx][:, 0],
                     marker=markers[vv],
                     s=sizes[vv],
-                    edgecolor=None, #edgecolors[vv],
+                    edgecolor=None,  # edgecolors[vv],
                     linewidth=linewidth,
                     label="View {}".format(vv + 1),
                     vmin=minY,
@@ -303,7 +304,7 @@ def two_d_gpsa_diff_fov(
                     c=Y[curr_idx][:, 0],
                     marker=markers[vv],
                     s=sizes[vv],
-                    edgecolor=None, #edgecolors[vv],
+                    edgecolor=None,  # edgecolors[vv],
                     linewidth=linewidth,
                     label="View {}".format(vv + 1),
                     vmin=minY,
@@ -423,7 +424,7 @@ if __name__ == "__main__":
             n_epochs=N_EPOCHS,
             n_outputs=n_outputs,
             warp_kernel_variance=0.1,
-            warp_kernel_lengthscale=5.,
+            warp_kernel_lengthscale=5.0,
             n_latent_gps={"expression": 5},
             make_plot=True if ii == 0 else False,
         )

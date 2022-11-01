@@ -43,7 +43,7 @@ def scale_spatial_coords(X, max_val=10.0):
 
 
 N_LAYERS = 1
-N_REPEATS = 2 #10
+N_REPEATS = 2  # 10
 n_spatial_dims = 2
 n_views = 2
 
@@ -51,7 +51,7 @@ n_views = 2
 m_G = 10
 m_X_per_view = 10
 
-N_EPOCHS = 1_000 #2_000
+N_EPOCHS = 1_000  # 2_000
 PRINT_EVERY = 50
 N_LATENT_GPS = {"expression": None}
 
@@ -117,15 +117,19 @@ for rep_ii in range(N_REPEATS):
 
     X, Y_warped, n_samples_list, view_idx = apply_gp_warp(
         X_orig,
-        Y_orig, #[:, :curr_n_genes] if curr_n_genes > 0 else Y_orig[:, curr_n_genes:],
+        Y_orig,  # [:, :curr_n_genes] if curr_n_genes > 0 else Y_orig[:, curr_n_genes:],
         n_views=2,
         kernel_variance=0.1,
         kernel_lengthscale=10,
         noise_variance=1e-1,
     )
 
-    keep_idx1 = np.random.choice(np.arange(n_orig), size=int(0.8 * n_orig), replace=False)
-    keep_idx2 = np.random.choice(np.arange(n_orig) + n_orig, size=int(0.8 * n_orig), replace=False)
+    keep_idx1 = np.random.choice(
+        np.arange(n_orig), size=int(0.8 * n_orig), replace=False
+    )
+    keep_idx2 = np.random.choice(
+        np.arange(n_orig) + n_orig, size=int(0.8 * n_orig), replace=False
+    )
     X = X[np.concatenate([keep_idx1, keep_idx2])]
     Y_warped = Y_warped[np.concatenate([keep_idx1, keep_idx2])]
     n_samples_list = [len(keep_idx1), len(keep_idx2)]
@@ -286,7 +290,9 @@ n_each = len(n_genes_list) // 2
 n_genes_list_short = n_genes_list[:n_each]
 results_df_corr = pd.melt(pd.DataFrame(errors[:, :n_each], columns=n_genes_list_short))
 results_df_corr["Type"] = "Spatially correlated"
-results_df_uncorr = pd.melt(pd.DataFrame(errors[:, n_each:], columns=n_genes_list_short))
+results_df_uncorr = pd.melt(
+    pd.DataFrame(errors[:, n_each:], columns=n_genes_list_short)
+)
 results_df_uncorr["Type"] = "Spatially uncorrelated"
 
 results_df = pd.concat([results_df_corr, results_df_uncorr], axis=0)

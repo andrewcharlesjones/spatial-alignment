@@ -1,2 +1,2 @@
 def test_import():
-	from gpsa import VariationalGPSA
+    from gpsa import VariationalGPSA

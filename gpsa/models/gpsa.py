@@ -127,9 +127,13 @@ class GPSA(nn.Module):
 
         if mean_function == "identity_fixed":
             self.mean_slopes = (
-                torch.eye(self.n_spatial_dims, device=device).unsqueeze(0).repeat(self.n_views, 1, 1)
+                torch.eye(self.n_spatial_dims, device=device)
+                .unsqueeze(0)
+                .repeat(self.n_views, 1, 1)
             )
-            self.mean_intercepts = torch.zeros([self.n_views, self.n_spatial_dims], device=device)
+            self.mean_intercepts = torch.zeros(
+                [self.n_views, self.n_spatial_dims], device=device
+            )
         elif mean_function == "identity_initialized":
             self.mean_slopes = nn.Parameter(
                 torch.randn([self.n_views, self.n_spatial_dims, self.n_spatial_dims])
@@ -150,10 +154,10 @@ class GPSA(nn.Module):
 
     def create_view_idx_dict(self, data_dict):
         """Summary
-        
+
         Args:
             data_dict (TYPE): Description
-        
+
         Returns:
             TYPE: Description
         """
@@ -195,11 +199,11 @@ class GPSA(nn.Module):
 
 def distance_matrix(X, Y):
     """Compute distances between samples (rows) of two matrices
-    
+
     Args:
         X (array): n x D matrix of spatial locations
         Y (array): m x D matrix of spatial locations
-    
+
     Returns:
         array: n x m matrix whose ij'th elementh is the Euclidean distance between i'th row of X and j'th row of Y
     """

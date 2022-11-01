@@ -192,11 +192,6 @@ plt.gca().invert_yaxis()
 # ipdb.set_trace()
 
 
-
-
-
-
-
 gene_names = ["Hpca", "Atp2b1", "Camk2a"]
 # gene_idx = np.where(np.isin(data.var.gene_ids.values, gene_names))[0]
 gene_idx = [np.where(data.var.gene_ids.values == g)[0] for g in gene_names]
@@ -239,4 +234,3 @@ plt.show()
 import ipdb
 
 ipdb.set_trace()
-

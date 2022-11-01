@@ -41,10 +41,11 @@ X1, X2 = np.meshgrid(x1s, x2s)
 
 # dists = pairwise_distances(grid_points, X_unaligned)
 
-def plot_grid(x,y, ax=None, **kwargs):
+
+def plot_grid(x, y, ax=None, **kwargs):
     ax = ax or plt.gca()
-    segs1 = np.stack((x,y), axis=2)
-    segs2 = segs1.transpose(1,0,2)
+    segs1 = np.stack((x, y), axis=2)
+    segs2 = segs1.transpose(1, 0, 2)
     ax.add_collection(LineCollection(segs1, **kwargs))
     ax.add_collection(LineCollection(segs2, **kwargs))
     ax.autoscale()
@@ -59,17 +60,27 @@ plt.figure(figsize=(7, 7))
 # for ii, gp in enumerate(grid_points):
 for ii in range(grid_size):
     for jj in range(grid_size):
-        dists = pairwise_distances(np.array([X1[ii, jj], X2[ii, jj]]).reshape(1, -1), X_unaligned).squeeze()
+        dists = pairwise_distances(
+            np.array([X1[ii, jj], X2[ii, jj]]).reshape(1, -1), X_unaligned
+        ).squeeze()
         curr_neighbor_idx = np.where(dists < neighbor_dist_threshold)[0]
         if len(curr_neighbor_idx) == 0:
             avg_displacement = [0, 0]
         else:
-            avg_displacement = (X_aligned[curr_neighbor_idx] - X_unaligned[curr_neighbor_idx]).mean(0)
+            avg_displacement = (
+                X_aligned[curr_neighbor_idx] - X_unaligned[curr_neighbor_idx]
+            ).mean(0)
         deformation_grid_x[ii, jj] = X1[ii, jj] + avg_displacement[0]
         deformation_grid_y[ii, jj] = X2[ii, jj] + avg_displacement[1]
 
         if len(curr_neighbor_idx) != 0:
-            plt.arrow(X1[ii, jj], X2[ii, jj], avg_displacement[0], avg_displacement[1], head_width=0.1)
+            plt.arrow(
+                X1[ii, jj],
+                X2[ii, jj],
+                avg_displacement[0],
+                avg_displacement[1],
+                head_width=0.1,
+            )
 plt.gca().invert_yaxis()
 plt.savefig("./out/slideseq_deformation_field.png")
 plt.show()
@@ -87,4 +98,3 @@ plt.show()
 import ipdb
 
 ipdb.set_trace()
-

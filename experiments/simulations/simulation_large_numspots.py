@@ -75,7 +75,6 @@ for ii in range(n_repeats):
         slice1.obsm["spatial"] = X[view_idx[0]]
         slice2.obsm["spatial"] = X[view_idx[1]]
 
-
         pi12 = PASTE.pairwise_align(slice1, slice2, alpha=0.1)
 
         slices = [slice1, slice2]
@@ -84,7 +83,8 @@ for ii in range(n_repeats):
 
         err_paste = np.mean(
             np.sum(
-                (new_slices[0].obsm["spatial"] - new_slices[1].obsm["spatial"]) ** 2, axis=1
+                (new_slices[0].obsm["spatial"] - new_slices[1].obsm["spatial"]) ** 2,
+                axis=1,
             )
         )
         paste_errors[ii, jj] = err_paste
@@ -101,7 +101,6 @@ for ii in range(n_repeats):
                 "n_samples_list": n_samples_list,
             }
         }
-
 
         model = VariationalGPSA(
             data_dict,
@@ -127,7 +126,6 @@ for ii in range(n_repeats):
 
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
 
-
         def train(model, loss_fn, optimizer):
             model.train()
 
@@ -146,7 +144,6 @@ for ii in range(n_repeats):
 
             return loss.item()
 
-
         # Set up figure.
         # fig = plt.figure(figsize=(14, 7), facecolor="white", constrained_layout=True)
         # data_expression_ax = fig.add_subplot(121, frameon=False)
@@ -158,7 +155,9 @@ for ii in range(n_repeats):
 
             if t % PRINT_EVERY == 0:
                 print("Iter: {0:<10} LL {1:1.3e}".format(t, -loss), flush=True)
-                G_means, _, _, _ = model.forward({"expression": x}, view_idx=view_idx, Ns=Ns)
+                G_means, _, _, _ = model.forward(
+                    {"expression": x}, view_idx=view_idx, Ns=Ns
+                )
 
                 # callback_twod(
                 #     model,
@@ -176,7 +175,9 @@ for ii in range(n_repeats):
         n_samples_per_view = n_samples_per_view = X.shape[0] // N_VIEWS
         view1_aligned_coords = aligned_coords[:n_samples_per_view]
         view2_aligned_coords = aligned_coords[n_samples_per_view:]
-        err = np.mean(np.sum((view1_aligned_coords - view2_aligned_coords) ** 2, axis=1))
+        err = np.mean(
+            np.sum((view1_aligned_coords - view2_aligned_coords) ** 2, axis=1)
+        )
 
         gpsa_errors[ii, jj] = err
         plt.close()
@@ -211,7 +212,6 @@ plt.show()
 plt.close()
 
 
-
 import ipdb
+
 ipdb.set_trace()
-        

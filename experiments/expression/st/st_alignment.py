@@ -22,6 +22,7 @@ from util import (
     matern12_kernel,
     rbf_kernel,
 )
+
 # from models.gpsa_vi_lmc import VariationalWarpGP
 # from plotting.callbacks import callback_oned, callback_twod, callback_twod_aligned_only
 from gpsa import VariationalGPSA, matern12_kernel, rbf_kernel

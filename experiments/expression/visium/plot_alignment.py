@@ -55,6 +55,7 @@ plt.style.use("dark_background")
 #     "savefig.facecolor": "lightgray",
 #     "savefig.edgecolor": "lightgray"})
 
+
 def scale_spatial_coords(X, max_val=10.0):
     X = X - X.min(0)
     X = X / X.max(0)

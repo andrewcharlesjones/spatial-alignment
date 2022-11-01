@@ -22,11 +22,12 @@ def rbf_kernel(
     )
     return K
 
+
 def rbf_kernel_numpy(x, xp, kernel_params):
     output_scale = np.exp(kernel_params[0])
     lengthscales = np.exp(kernel_params[1:])
     diffs = np.expand_dims(x / lengthscales, 1) - np.expand_dims(xp / lengthscales, 0)
-    return output_scale * np.exp(-0.5 * np.sum(diffs ** 2, axis=2))
+    return output_scale * np.exp(-0.5 * np.sum(diffs**2, axis=2))
 
 
 def matern12_kernel(
@@ -113,7 +114,7 @@ class ConvergenceChecker(object):
         self.span = span
         x = np.arange(span, dtype=dtp)
         x -= x.mean()
-        X = np.column_stack((np.ones(shape=x.shape), x, x ** 2, x ** 3))
+        X = np.column_stack((np.ones(shape=x.shape), x, x**2, x**3))
         self.U = np.linalg.svd(X, full_matrices=False)[0]
 
     def smooth(self, y):
@@ -242,7 +243,7 @@ def pearson_residuals(counts, theta, clipping=True):
 
     # get residuals
     mu = counts_sum1 @ counts_sum0 / counts_sum
-    z = (counts - mu) / np.sqrt(mu + mu ** 2 / theta)
+    z = (counts - mu) / np.sqrt(mu + mu**2 / theta)
 
     # clip to sqrt(n)
     if clipping:
@@ -253,8 +254,7 @@ def pearson_residuals(counts, theta, clipping=True):
     return z
 
 
-class LossNotDecreasingChecker():
-
+class LossNotDecreasingChecker:
     def __init__(self, max_epochs, atol=1e-2, window_size=10):
         self.max_epochs = max_epochs
         self.atol = atol
@@ -265,19 +265,14 @@ class LossNotDecreasingChecker():
     def check_loss(self, iternum, loss_trace):
 
         if iternum >= 1:
-            self.decrease_in_loss[iternum] = loss_trace[iternum-1] - loss_trace[iternum]
+            self.decrease_in_loss[iternum] = (
+                loss_trace[iternum - 1] - loss_trace[iternum]
+            )
             if iternum >= self.window_size:
-                self.average_decrease_in_loss[iternum] = np.mean(self.decrease_in_loss[iternum - self.window_size + 1:iternum])
-                has_converged = (self.average_decrease_in_loss[iternum] < self.atol)
+                self.average_decrease_in_loss[iternum] = np.mean(
+                    self.decrease_in_loss[iternum - self.window_size + 1 : iternum]
+                )
+                has_converged = self.average_decrease_in_loss[iternum] < self.atol
                 return has_converged
 
         return False
-
-
-
-
-
-
-
-
-

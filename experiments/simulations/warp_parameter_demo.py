@@ -28,7 +28,7 @@ n_spatial_dims = 2
 n_views = 2
 markers = ["o", "X"]
 
-lengthscale_list = [10 ** x for x in [-1, 0, 1]]
+lengthscale_list = [10**x for x in [-1, 0, 1]]
 amplitude_list = [0.1, 1.0, 5.0]
 
 xlimits = [0, 10]

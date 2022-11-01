@@ -19,6 +19,7 @@ from util import (
     deviance_residuals,
     pearson_residuals,
 )
+
 # from util import matern12_kernel, matern32_kernel, rbf_kernel
 # from models.gpsa_vi_lmc import VariationalWarpGP
 # from plotting.callbacks import callback_oned, callback_twod

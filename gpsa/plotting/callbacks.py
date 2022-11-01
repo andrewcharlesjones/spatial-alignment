@@ -224,7 +224,9 @@ def callback_twod(
         latent_Xs.append(curr_latent_Xs)
         Ys.append(Y[curr_view_idx[vv], gene_idx])
         markers_list.append([markers[vv]] * curr_latent_Xs.shape[0])
-        viewname_list.append(["Observation {}".format(vv + 1)] * curr_latent_Xs.shape[0])
+        viewname_list.append(
+            ["Observation {}".format(vv + 1)] * curr_latent_Xs.shape[0]
+        )
 
     Xs = np.concatenate(Xs, axis=0)
     latent_Xs = np.concatenate(latent_Xs, axis=0)

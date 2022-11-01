@@ -51,7 +51,7 @@ N_EPOCHS = 2_000
 PRINT_EVERY = 100
 
 FRAC_TEST = 0.25
-N_REPEATS = 1 #10
+N_REPEATS = 1  # 10
 
 
 def process_data(adata, n_top_genes=2000):
@@ -279,7 +279,9 @@ for repeat_idx in range(N_REPEATS):
     preds = knn.predict(X_test)
 
     # error_union = np.mean(np.sum((preds - Y_test) ** 2, axis=1))
-    error_union = np.array([pearsonr(Y_test[:, jj], preds[:, jj])[0] for jj in range(preds.shape[1])])
+    error_union = np.array(
+        [pearsonr(Y_test[:, jj], preds[:, jj])[0] for jj in range(preds.shape[1])]
+    )
     # print(len(preds))
 
     errors_union.append(error_union)
@@ -313,7 +315,9 @@ for repeat_idx in range(N_REPEATS):
     preds = np.concatenate(preds, axis=0)
     truth = np.concatenate(truth, axis=0)
     # error_separate = np.mean(np.sum((preds - truth) ** 2, axis=1))
-    error_separate = np.array([pearsonr(truth[:, jj], preds[:, jj])[0] for jj in range(preds.shape[1])])
+    error_separate = np.array(
+        [pearsonr(truth[:, jj], preds[:, jj])[0] for jj in range(preds.shape[1])]
+    )
 
     print("MSE, separate: {}".format(round(np.mean(error_separate), 5)), flush=True)
 
@@ -399,7 +403,12 @@ for repeat_idx in range(N_REPEATS):
                 knn.fit(X=curr_aligned_coords, y=Y_train)
                 preds = knn.predict(curr_aligned_coords_test)
                 # error_gpsa = np.mean(np.sum((preds - Y_test) ** 2, axis=1))
-                error_gpsa = np.array([pearsonr(Y_test[:, jj], preds[:, jj])[0] for jj in range(preds.shape[1])])
+                error_gpsa = np.array(
+                    [
+                        pearsonr(Y_test[:, jj], preds[:, jj])[0]
+                        for jj in range(preds.shape[1])
+                    ]
+                )
                 print(
                     "MSE, GPSA GPR: {}".format(round(np.mean(error_gpsa), 5)),
                     flush=True,
@@ -417,6 +426,5 @@ for repeat_idx in range(N_REPEATS):
 
     pd.DataFrame(preds).to_csv("./out/slideseq_preds_gpsa.csv")
     pd.DataFrame(Y_test).to_csv("./out/slideseq_truth_gpsa.csv")
-
 
     # import ipdb; ipdb.set_trace()
