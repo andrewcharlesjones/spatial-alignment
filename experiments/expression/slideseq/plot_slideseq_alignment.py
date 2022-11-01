@@ -75,7 +75,7 @@ n_genes = 3
 fig, ax = plt.subplots(
     2,
     n_genes + 1,
-    figsize=(n_genes * 5 + 5, 8),
+    figsize=(n_genes * 5 + 3, 8),
     gridspec_kw={"width_ratios": [1.1, 1, 1, 1]},
 )
 
@@ -155,10 +155,58 @@ plt.axis("off")
 plt.gca().invert_yaxis()
 
 
-for gg in range(n_genes):
+# for gg in range(n_genes):
+
+#     # plt.subplot(2, n_genes + 1, gg + 2)
+#     plt.sca(ax[0, gg + 1])
+#     for vv in range(len(data.obs.batch.unique())):
+#         plt.scatter(
+#             X[view_idx[vv], 0],
+#             X[view_idx[vv], 1],
+#             c=Y[view_idx[vv]][:, gg],
+#             s=1,
+#         )
+#     plt.title(r"$\emph{" + data.var.gene_ids.values[gg].upper() + "}$")
+#     plt.axis("off")
+#     plt.gca().invert_yaxis()
+
+#     # plt.subplot(2, n_genes + 1, gg + (n_genes + 2) + 1)
+#     plt.sca(ax[1, gg + 1])
+#     for vv in range(len(data.obs.batch.unique())):
+#         plt.scatter(
+#             aligned_coords[view_idx[vv], 0],
+#             aligned_coords[view_idx[vv], 1],
+#             c=Y[view_idx[vv]][:, gg],
+#             s=1,
+#         )
+#     # plt.title(r"$\emph{" + data.var.gene_ids.values[gg] + "}$")
+#     plt.axis("off")
+#     plt.gca().invert_yaxis()
+
+# # plt.savefig("./out/slideseq_alignment_per_gene.png")
+# plt.show()
+
+
+# import ipdb
+
+# ipdb.set_trace()
+
+
+
+
+
+
+
+gene_names = ["Hpca", "Atp2b1", "Camk2a"]
+# gene_idx = np.where(np.isin(data.var.gene_ids.values, gene_names))[0]
+gene_idx = [np.where(data.var.gene_ids.values == g)[0] for g in gene_names]
+print(gene_idx)
+
+# for gg in range(n_genes):
+for ii, gg in enumerate(gene_idx):
 
     # plt.subplot(2, n_genes + 1, gg + 2)
-    plt.sca(ax[0, gg + 1])
+    plt.sca(ax[0, ii + 1])
     for vv in range(len(data.obs.batch.unique())):
         plt.scatter(
             X[view_idx[vv], 0],
@@ -166,12 +214,13 @@ for gg in range(n_genes):
             c=Y[view_idx[vv]][:, gg],
             s=1,
         )
-    plt.title(r"$\emph{" + data.var.gene_ids.values[gg].upper() + "}$")
+    # plt.title(r"$\emph{" + data.var.gene_ids.values[gg].upper() + "}$")
+    plt.title(r"$\emph{" + gene_names[ii].upper() + "}$")
     plt.axis("off")
     plt.gca().invert_yaxis()
 
     # plt.subplot(2, n_genes + 1, gg + (n_genes + 2) + 1)
-    plt.sca(ax[1, gg + 1])
+    plt.sca(ax[1, ii + 1])
     for vv in range(len(data.obs.batch.unique())):
         plt.scatter(
             aligned_coords[view_idx[vv], 0],
@@ -190,3 +239,4 @@ plt.show()
 import ipdb
 
 ipdb.set_trace()
+

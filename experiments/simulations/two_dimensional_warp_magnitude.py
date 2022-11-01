@@ -7,8 +7,11 @@ import seaborn as sns
 import sys
 from two_dimensional import two_d_gpsa
 
-sys.path.append("../..")
-from models.gpsa_vi_lmc import VariationalWarpGP
+# sys.path.append("../..")
+# from models.gpsa_vi_lmc import VariationalWarpGP
+from gpsa import VariationalGPSA, matern12_kernel, rbf_kernel
+from gpsa.plotting import callback_twod
+
 
 sys.path.append("../../data")
 from simulated.generate_twod_data import generate_twod_data

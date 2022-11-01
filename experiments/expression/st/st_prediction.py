@@ -13,15 +13,17 @@ from util import matern12_kernel, matern32_kernel, rbf_kernel
 sys.path.append("../../../data")
 from warps import apply_gp_warp
 
-sys.path.append("../../../models")
-from gpsa_vi_lmc import VariationalWarpGP
+# sys.path.append("../../../models")
+# from gpsa_vi_lmc import VariationalWarpGP
+from gpsa import VariationalGPSA, matern12_kernel, rbf_kernel
+from gpsa.plotting import callback_twod
 
 # sys.path.append("../../../models")
 from simulated.generate_oned_data import (
     generate_oned_data_affine_warp,
     generate_oned_data_gp_warp,
 )
-from plotting.callbacks import callback_oned, callback_twod
+# from plotting.callbacks import callback_oned, callback_twod
 
 # sys.path.append("../../../data")
 from st.load_st_data import load_st_data
@@ -115,7 +117,7 @@ for repeat_idx in range(N_REPEATS):
         }
     }
 
-    model = VariationalWarpGP(
+    model = VariationalGPSA(
         data_dict_train,
         n_spatial_dims=n_spatial_dims,
         m_X_per_view=m_X_per_view,

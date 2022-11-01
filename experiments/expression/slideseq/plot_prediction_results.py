@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import numpy as np
+from scipy.stats import pearsonr
 
 import matplotlib
 
@@ -63,7 +64,7 @@ results_df_trialwise_mean["method"] = np.concatenate(
 )
 g = sns.boxplot(data=results_df_trialwise_mean, x="method", y="value", color="gray")
 plt.xlabel("")
-plt.ylabel(r"$R^2$")
+plt.ylabel(r"Pearson $\rho$")
 plt.suptitle("Slide-seqV2 prediction")
 
 
@@ -78,8 +79,8 @@ plt.errorbar(
     color="black",
 )
 
-plt.xlabel(r"$R^2$, Union")
-plt.ylabel(r"$R^2$, GPSA")
+plt.xlabel(r"Pearson $\rho$, Union")
+plt.ylabel(r"Pearson $\rho$, GPSA")
 
 ax = plt.gca()
 
@@ -97,9 +98,57 @@ plt.tight_layout()
 
 plt.savefig("./out/two_d_prediction_comparison_slideseq.png")
 plt.show()
-import ipdb
 
-ipdb.set_trace()
+
+
+preds = pd.read_csv("./out/slideseq_preds_gpsa.csv", index_col=0)
+truth = pd.read_csv("./out/slideseq_truth_gpsa.csv", index_col=0)
+
+pearson_corrs = np.zeros(preds.shape[1])
+for jj in range(preds.shape[1]):
+    pearson_corrs[jj] = pearsonr(truth.iloc[:, jj].values, preds.iloc[:, jj].values)[0]
+
+sorted_idx = np.argsort(pearson_corrs)
+n_genes_to_plot = 3
+
+plt.figure(figsize=(n_genes_to_plot * 7, 14))
+
+gene_names = pd.read_csv("./out/slideseq_pred_gene_names.csv").iloc[:, 0].values
+
+# import ipdb
+
+# ipdb.set_trace()
+
+for ii, gene_idx in enumerate(sorted_idx[-n_genes_to_plot:]):
+    plt.subplot(2, n_genes_to_plot, ii + 1)
+    plt.scatter(truth.iloc[:, gene_idx].values, preds.iloc[:, gene_idx].values, c="gray")
+    plt.xlabel("True expression")
+    plt.ylabel("Predicted expression")
+    plt.title(r"$\emph{" + gene_names[gene_idx].upper() + "}$")
+
+for ii, gene_idx in enumerate(sorted_idx[:n_genes_to_plot]):
+    plt.subplot(2, n_genes_to_plot, ii + 4)
+    plt.scatter(truth.iloc[:, gene_idx].values, preds.iloc[:, gene_idx].values, c="gray")
+    plt.xlabel("True expression")
+    plt.ylabel("Predicted expression")
+    plt.title(r"$\emph{" + gene_names[gene_idx].upper() + "}$")
+
+plt.tight_layout()
+plt.savefig("./out/slideseq_prediction_examples.png")
+plt.show()
+
+# for jj in range(preds.shape[1]):
+#     # import ipdb; ipdb.set_trace()
+#     print(round(pearsonr(truth.iloc[:, jj].values, preds.iloc[:, jj].values)[0], 3))
+#     nonzero_idx = np.where(truth.iloc[:, jj].values != np.min(truth.iloc[:, jj].values))[0]
+#     print(round(pearsonr(truth.iloc[:, jj].values[nonzero_idx], preds.iloc[:, jj].values[nonzero_idx])[0], 3))
+#     print()
+#     plt.scatter(truth.iloc[:, jj].values, preds.iloc[:, jj].values, c="gray")
+#     plt.xlabel("True expression")
+#     plt.ylabel("Predicted expression")
+#     plt.show()
+#     # import ipdb; ipdb.set_trace()
+
 
 import ipdb
 

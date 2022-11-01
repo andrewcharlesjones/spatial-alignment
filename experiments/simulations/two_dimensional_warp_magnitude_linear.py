@@ -9,8 +9,10 @@ from two_dimensional import two_d_gpsa
 from scipy.stats import multivariate_normal as mvnpy
 import matplotlib
 
-sys.path.append("../..")
-from models.gpsa_vi_lmc import VariationalWarpGP
+# sys.path.append("../..")
+# from models.gpsa_vi_lmc import VariationalWarpGP
+from gpsa import VariationalGPSA, matern12_kernel, rbf_kernel
+from gpsa.plotting import callback_twod
 
 sys.path.append("../../data")
 from simulated.generate_twod_data import generate_twod_data
@@ -145,7 +147,7 @@ if __name__ == "__main__":
                 }
             }
 
-            model = VariationalWarpGP(
+            model = VariationalGPSA(
                 data_dict,
                 n_spatial_dims=n_spatial_dims,
                 m_X_per_view=m_X_per_view,

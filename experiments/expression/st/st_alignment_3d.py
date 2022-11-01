@@ -24,7 +24,9 @@ from util import (
 )
 
 # from plotting.callbacks import callback_oned, callback_twod, callback_twod_aligned_only
-from models.gpsa_vi_lmc import VariationalWarpGP
+# from models.gpsa_vi_lmc import VariationalWarpGP
+from gpsa import VariationalGPSA, matern12_kernel, rbf_kernel
+from gpsa.plotting import callback_twod
 
 # from plotting.callbacks import callback_oned, callback_twod, callback_twod_aligned_only
 from gpsa.plotting import callback_oned, callback_twod, callback_twod_aligned_only
@@ -204,7 +206,7 @@ data_dict = {
 }
 
 
-model = VariationalWarpGP(
+model = VariationalGPSA(
     data_dict,
     n_spatial_dims=n_spatial_dims,
     m_X_per_view=m_X_per_view,

@@ -28,8 +28,8 @@ Y = data.X
 view_idx = [np.where(data.obs.batch.values == ii)[0] for ii in range(2)]
 n_samples_list = [len(x) for x in view_idx]
 
-x = torch.from_numpy(X).float().clone()
-y = torch.from_numpy(Y).float().clone()
+x = torch.from_numpy(X).float().clone().to(device)
+y = torch.from_numpy(Y).float().clone().to(device)
 
 data_dict = {
     "expression": {

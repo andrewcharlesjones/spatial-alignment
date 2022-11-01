@@ -3,8 +3,25 @@ import numpy as np
 import torch.nn as nn
 from ..util.util import rbf_kernel
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
 # Define model
 class GPSA(nn.Module):
+    """
+    Args:
+        data_dict (dict): Dictionary of data in the format {"modality": {"spatial_coords": X, "outputs": Y, "n_samples_list": n_samples_list}}
+        data_init (bool, optional): Whether to initialize inducing locations with KMeans on data.
+        n_spatial_dims (int, optional): Number of spatial dimensions (usually 2 or 3).
+        n_noise_variance_params (int, optional): Number of noise variance parameters.
+        kernel_func_warp (function, optional): Covariance function for warp GP.
+        kernel_func_data (function, optional): Covariance function for output GP.
+        mean_function (str, optional): Mean function for warp GP. One of ["identity_fixed", "identity_initialized", or None]. None results in a linear mean function.
+        mean_penalty_param (float, optional): Description
+        fixed_warp_kernel_variances (None, optional): Description
+        fixed_warp_kernel_lengthscales (None, optional): Description
+        fixed_data_kernel_lengthscales (None, optional): Description
+    """
+
     def __init__(
         self,
         data_dict,
@@ -19,21 +36,7 @@ class GPSA(nn.Module):
         fixed_warp_kernel_lengthscales=None,
         fixed_data_kernel_lengthscales=None,
     ):
-        """Initialize GPSA model.
-
-        Args:
-            data_dict (dict): Dictionary of data in the format {"modality": {"spatial_coords": X, "outputs": Y, "n_samples_list": n_samples_list}}
-            data_init (bool, optional): Whether to initialize inducing locations with KMeans on data.
-            n_spatial_dims (int, optional): Number of spatial dimensions (usually 2 or 3).
-            n_noise_variance_params (int, optional): Number of noise variance parameters.
-            kernel_func_warp (function, optional): Covariance function for warp GP.
-            kernel_func_data (function, optional): Covariance function for output GP.
-            mean_function (str, optional): Mean function for warp GP. One of ["identity_fixed", "identity_initialized", or None]. None results in a linear mean function.
-            mean_penalty_param (float, optional): Description
-            fixed_warp_kernel_variances (None, optional): Description
-            fixed_warp_kernel_lengthscales (None, optional): Description
-            fixed_data_kernel_lengthscales (None, optional): Description
-        """
+        # Constructor
         super(GPSA, self).__init__()
         self.modality_names = list(data_dict.keys())
         self.n_modalities = len(self.modality_names)
@@ -124,9 +127,9 @@ class GPSA(nn.Module):
 
         if mean_function == "identity_fixed":
             self.mean_slopes = (
-                torch.eye(self.n_spatial_dims).unsqueeze(0).repeat(self.n_views, 1, 1)
+                torch.eye(self.n_spatial_dims, device=device).unsqueeze(0).repeat(self.n_views, 1, 1)
             )
-            self.mean_intercepts = torch.zeros([self.n_views, self.n_spatial_dims])
+            self.mean_intercepts = torch.zeros([self.n_views, self.n_spatial_dims], device=device)
         elif mean_function == "identity_initialized":
             self.mean_slopes = nn.Parameter(
                 torch.randn([self.n_views, self.n_spatial_dims, self.n_spatial_dims])
@@ -146,7 +149,14 @@ class GPSA(nn.Module):
         self.diagonal_offset = 1e-5
 
     def create_view_idx_dict(self, data_dict):
-
+        """Summary
+        
+        Args:
+            data_dict (TYPE): Description
+        
+        Returns:
+            TYPE: Description
+        """
         view_idx, Ns, Ps = {}, {}, {}
         n_total = 0
         for mod in self.modality_names:
@@ -184,6 +194,15 @@ class GPSA(nn.Module):
 
 
 def distance_matrix(X, Y):
+    """Compute distances between samples (rows) of two matrices
+    
+    Args:
+        X (array): n x D matrix of spatial locations
+        Y (array): m x D matrix of spatial locations
+    
+    Returns:
+        array: n x m matrix whose ij'th elementh is the Euclidean distance between i'th row of X and j'th row of Y
+    """
     squared_diffs = torch.square(torch.unsqueeze(X, 0) - torch.unsqueeze(Y, 1))
     squared_distances = torch.sum(squared_diffs, dim=2)
     return squared_distances

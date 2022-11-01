@@ -10,19 +10,6 @@ import scanpy as sc
 import anndata
 from sklearn.metrics import r2_score, mean_squared_error
 
-sys.path.append("../../..")
-sys.path.append("../../../data")
-from util import (
-    compute_size_factors,
-    poisson_deviance,
-    deviance_feature_selection,
-    deviance_residuals,
-    pearson_residuals,
-)
-from util import matern12_kernel, matern32_kernel, rbf_kernel
-from models.gpsa_vi_lmc import VariationalWarpGP
-from plotting.callbacks import callback_oned, callback_twod
-
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import WhiteKernel, RBF, Matern
 from sklearn.model_selection import KFold

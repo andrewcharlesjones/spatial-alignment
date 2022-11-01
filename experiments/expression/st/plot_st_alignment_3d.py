@@ -21,6 +21,7 @@ X = pd.read_csv("./out/X_st_3d.csv", index_col=0).values
 Y = pd.read_csv("./out/Y_st_3d.csv", index_col=0).values
 data = sc.read_h5ad("./out/data_st_3d.h5")
 
+import ipdb; ipdb.set_trace()
 view_idx = []
 for vv in data.obs.batch.unique():
     view_idx.append(np.where(data.obs.batch.values == vv)[0])

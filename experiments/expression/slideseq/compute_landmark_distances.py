@@ -9,6 +9,7 @@ from os.path import join as pjoin
 import scanpy as sc
 import anndata
 import matplotlib.patches as patches
+from sklearn.metrics import pairwise_distances
 
 import matplotlib
 
@@ -24,7 +25,8 @@ X = pd.read_csv("./out/X_slideseq.csv", index_col=0).values
 Y = pd.read_csv("./out/Y_slideseq.csv", index_col=0).values
 data = sc.read_h5ad("./out/data_slideseq.h5")
 
-landmark_markersize = 200
+landmark_markersize = 600
+plt.style.use("dark_background")
 
 view_idx = []
 for vv in range(2):
@@ -76,16 +78,20 @@ close_idx_2 = np.argmin(
 )
 
 
-plt.figure(figsize=(16, 7))
+plt.figure(figsize=(24, 7))
 
-plt.subplot(121)
+# colors = ["magenta", "cyan"]
+colors = ["blue", "orange"]
+plt.subplot(131)
 plt.title("Original data")
 for vv in range(len(data.obs.batch.unique())):
     plt.scatter(
         X[view_idx[vv], 0],
         X[view_idx[vv], 1],
-        s=1,
-        label="View {}".format(vv + 1)
+        # s=1,
+        label="View {}".format(vv + 1),
+        c=colors[vv],
+        alpha=0.5,
         # aligned_coords[view_idx[vv], 0], aligned_coords[view_idx[vv], 1], s=1, label="View {}".format(vv + 1)
     )
 
@@ -93,7 +99,7 @@ for ll in range(len(view1_landmark_locs_prealignment)):
     plt.scatter(
         X[view_idx[0]][close_idx_1[ll], 0],
         X[view_idx[0]][close_idx_1[ll], 1],
-        color="red",
+        color="yellow",
         marker="*",
         s=landmark_markersize,
     )
@@ -107,7 +113,7 @@ for ll in range(len(view1_landmark_locs_prealignment)):
     plt.scatter(
         X[view_idx[1]][close_idx_2[ll], 0],
         X[view_idx[1]][close_idx_2[ll], 1],
-        color="green",
+        color="lime",
         marker="*",
         s=landmark_markersize,
     )
@@ -120,22 +126,24 @@ for ll in range(len(view1_landmark_locs_prealignment)):
 plt.gca().invert_yaxis()
 plt.axis("off")
 
-plt.subplot(122)
+plt.subplot(132)
 plt.title("Aligned")
 for vv in range(len(data.obs.batch.unique())):
     plt.scatter(
         # X[view_idx[vv], 0], X[view_idx[vv], 1], s=1, label="View {}".format(vv + 1)
         aligned_coords[view_idx[vv], 0],
         aligned_coords[view_idx[vv], 1],
-        s=1,
+        # s=1,
         label="View {}".format(vv + 1),
+        c=colors[vv],
+        alpha=0.5,
     )
 
 for ll in range(len(view1_landmark_locs_prealignment)):
     plt.scatter(
         aligned_coords[view_idx[0]][close_idx_1[ll], 0],
         aligned_coords[view_idx[0]][close_idx_1[ll], 1],
-        color="red",
+        color="yellow",
         marker="*",
         s=landmark_markersize,
     )
@@ -149,7 +157,7 @@ for ll in range(len(view1_landmark_locs_prealignment)):
     plt.scatter(
         aligned_coords[view_idx[1]][close_idx_2[ll], 0],
         aligned_coords[view_idx[1]][close_idx_2[ll], 1],
-        color="green",
+        color="lime",
         marker="*",
         s=landmark_markersize,
     )
@@ -161,9 +169,59 @@ for ll in range(len(view1_landmark_locs_prealignment)):
     # )
 plt.gca().invert_yaxis()
 plt.axis("off")
+
+plt.subplot(133)
+plt.title("Deformation field")
+
+grid_size = 20
+neighbor_dist_threshold = 1
+
+view_idx_to_plot = 1
+X_unaligned = X[view_idx[view_idx_to_plot]].copy()
+X_aligned = aligned_coords[view_idx[view_idx_to_plot]].copy()
+assert len(X_unaligned) == len(X_aligned)
+
+x1s = np.linspace(X_unaligned[:, 0].min(), X_unaligned[:, 0].max(), num=grid_size)
+x2s = np.linspace(X_unaligned[:, 1].min(), X_unaligned[:, 1].max(), num=grid_size)
+X1, X2 = np.meshgrid(x1s, x2s)
+
+def plot_grid(x,y, ax=None, **kwargs):
+    ax = ax or plt.gca()
+    segs1 = np.stack((x,y), axis=2)
+    segs2 = segs1.transpose(1,0,2)
+    ax.add_collection(LineCollection(segs1, **kwargs))
+    ax.add_collection(LineCollection(segs2, **kwargs))
+    ax.autoscale()
+
+
+# plt.scatter(grid_points[:, 0], grid_points[:, 1], marker="+", color="gray")
+deformation_grid_x = np.zeros(X1.shape)
+deformation_grid_y = np.zeros(X2.shape)
+
+
+# for ii, gp in enumerate(grid_points):
+for ii in range(grid_size):
+    for jj in range(grid_size):
+        dists = pairwise_distances(np.array([X1[ii, jj], X2[ii, jj]]).reshape(1, -1), X_unaligned).squeeze()
+        curr_neighbor_idx = np.where(dists < neighbor_dist_threshold)[0]
+        if len(curr_neighbor_idx) == 0:
+            avg_displacement = [0, 0]
+        else:
+            avg_displacement = (X_aligned[curr_neighbor_idx] - X_unaligned[curr_neighbor_idx]).mean(0)
+        deformation_grid_x[ii, jj] = X1[ii, jj] + avg_displacement[0]
+        deformation_grid_y[ii, jj] = X2[ii, jj] + avg_displacement[1]
+
+        if len(curr_neighbor_idx) != 0:
+            plt.arrow(X1[ii, jj], X2[ii, jj], avg_displacement[0], avg_displacement[1], head_width=0.2)
+plt.gca().invert_yaxis()
+plt.axis("off")
 plt.savefig("./out/landmark_dists_slideseq_scatter.png")
 plt.show()
 plt.close()
+
+import ipdb
+
+ipdb.set_trace()
 
 
 ## Bar plot showing change in distance between landmarks

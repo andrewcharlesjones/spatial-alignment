@@ -10,22 +10,10 @@ import scanpy as sc
 import anndata
 import time
 
-sys.path.append("../../..")
-sys.path.append("../../../data")
-from warps import apply_gp_warp
+# sys.path.append("../../..")
+# sys.path.append("../../../data")
+# from warps import apply_gp_warp
 
-# from util import (
-#     compute_size_factors,
-#     poisson_deviance,
-#     deviance_feature_selection,
-#     deviance_residuals,
-#     pearson_residuals,
-#     matern12_kernel,
-#     rbf_kernel,
-# )
-
-# from models.gpsa_vi_lmc import VariationalWarpGP
-# from plotting.callbacks import callback_oned, callback_twod, callback_twod_aligned_only
 from gpsa import VariationalGPSA, matern12_kernel, rbf_kernel
 from gpsa.plotting import callback_twod
 

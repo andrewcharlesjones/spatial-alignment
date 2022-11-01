@@ -37,7 +37,7 @@ N_OUTPUTS = 3
 FIXED_VIEW_IDX = 0
 N_LATENT_GPS = {"expression": None}
 
-N_EPOCHS = 3_000
+N_EPOCHS = 2_000
 PRINT_EVERY = 100
 
 n_latent_gps = {"expression": None}
@@ -46,12 +46,12 @@ true_warp_spatial_variance = 0.1
 true_noise_variance = 0.0
 
 
-n_repeats = 3
-grid_size_list = [10, 20, 50]
-# grid_size_list = [50]
+n_repeats = 5
+# grid_size_list = [10, 20, 50]
+grid_size_list = [50]
 
 gpsa_errors = np.zeros((n_repeats, len(grid_size_list)))
-paste_errors = np.zeros(n_repeats)
+paste_errors = np.zeros((n_repeats, len(grid_size_list)))
 
 for ii in range(n_repeats):
 
@@ -69,24 +69,26 @@ for ii in range(n_repeats):
         n_samples_per_view = X.shape[0] // N_VIEWS
 
         ##  PASTE
-        # slice1 = anndata.AnnData(np.exp(Y[view_idx[0]]))
-        # slice2 = anndata.AnnData(np.exp(Y[view_idx[1]]))
+        slice1 = anndata.AnnData(np.exp(Y[view_idx[0]]))
+        slice2 = anndata.AnnData(np.exp(Y[view_idx[1]]))
 
-        # slice1.obsm["spatial"] = X[view_idx[0]]
-        # slice2.obsm["spatial"] = X[view_idx[1]]
+        slice1.obsm["spatial"] = X[view_idx[0]]
+        slice2.obsm["spatial"] = X[view_idx[1]]
 
-        # pi12 = PASTE.pairwise_align(slice1, slice2, alpha=0.1)
 
-        # slices = [slice1, slice2]
-        # pis = [pi12]
-        # new_slices = visualization.stack_slices_pairwise(slices, pis)
+        pi12 = PASTE.pairwise_align(slice1, slice2, alpha=0.1)
 
-        # err_paste = np.mean(
-        #     np.sum(
-        #         (new_slices[0].obsm["spatial"] - new_slices[1].obsm["spatial"]) ** 2, axis=1
-        #     )
-        # )
-        # paste_errors[ii] = err_paste
+        slices = [slice1, slice2]
+        pis = [pi12]
+        new_slices = visualization.stack_slices_pairwise(slices, pis)
+
+        err_paste = np.mean(
+            np.sum(
+                (new_slices[0].obsm["spatial"] - new_slices[1].obsm["spatial"]) ** 2, axis=1
+            )
+        )
+        paste_errors[ii, jj] = err_paste
+        print("PASTE error: ", err_paste, flush=True)
 
         ## GPSA
         x = torch.from_numpy(X).float().clone()
@@ -180,16 +182,29 @@ for ii in range(n_repeats):
         plt.close()
         print(err, flush=True)
 
-# import ipdb; ipdb.set_trace()
+
 # results_df = pd.melt(pd.DataFrame({"PASTE": paste_errors, "GPSA": gpsa_errors}))
-results_df = pd.melt(pd.DataFrame(gpsa_errors, columns=grid_size_list))
+results_df_gpsa = pd.melt(pd.DataFrame(gpsa_errors, columns=grid_size_list))
+results_df_gpsa["method"] = "GPSA"
+
+results_df_paste = pd.melt(pd.DataFrame(paste_errors, columns=grid_size_list))
+results_df_paste["method"] = "PASTE"
+
+results_df = pd.concat([results_df_gpsa, results_df_paste], axis=0)
+
 results_df.to_csv("./out/error_experiment_large_numspots.csv")
 
+
 plt.figure(figsize=(7, 7))
-sns.lineplot(data=results_df, x="variable", y="value")
-plt.xlabel("Number of spots")
+# sns.lineplot(data=results_df, x="variable", y="value", hue="method")
+# plt.xlabel("Number of spots")
+# plt.ylabel("Error")
+# plt.xscale("log")
+
+sns.boxplot(data=results_df, x="method", y="value")
+plt.xlabel("")
 plt.ylabel("Error")
-plt.xscale("log")
+
 plt.tight_layout()
 plt.savefig("./out/error_experiment_large_numspots.png")
 plt.show()

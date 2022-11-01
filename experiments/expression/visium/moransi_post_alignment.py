@@ -161,12 +161,15 @@ if __name__ == "__main__":
     plt.ylim([0, 1])
     plt.plot([0, 1], [0, 1], color="gray", linestyle="--")
 
-    plt.xlabel(r"$I$, Union")
-    plt.ylabel(r"$I$, GPSA")
+    plt.xlabel(r"Moran's $I$, Union")
+    plt.ylabel(r"Moran's $I$, GPSA")
     # plt.colorbar()
     plt.tight_layout()
     plt.savefig("./out/moransi_post_alignment.png")
     plt.show()
+
+    print((moran_scores[["pval_norm_fdr_bh_union", "pval_norm_fdr_bh_gpsa"]] < 1e-4).sum(0))
+    # import ipdb; ipdb.set_trace()
 
     # plt.subplot(122)
     # plt.scatter(-np.log10(moran_scores.pval_norm_fdr_bh_union + 1e-8), -np.log10(moran_scores.pval_norm_fdr_bh_gpsa + 1e-8))

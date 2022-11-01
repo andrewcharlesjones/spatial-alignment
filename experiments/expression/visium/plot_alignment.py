@@ -39,6 +39,22 @@ data_aligned = data.copy()
 data_aligned.obsm["spatial"] = aligned_coords
 
 
+plt.style.use("dark_background")
+# plt.rcParams.update({
+#     "lines.color": "white",
+#     "patch.edgecolor": "white",
+#     "text.color": "white",
+#     "axes.facecolor": "lightgray",
+#     "axes.edgecolor": "lightgray",
+#     "axes.labelcolor": "white",
+#     "xtick.color": "white",
+#     "ytick.color": "white",
+#     "grid.color": "lightgray",
+#     "figure.facecolor": "lightgray",
+#     "figure.edgecolor": "lightgray",
+#     "savefig.facecolor": "lightgray",
+#     "savefig.edgecolor": "lightgray"})
+
 def scale_spatial_coords(X, max_val=10.0):
     X = X - X.min(0)
     X = X / X.max(0)
@@ -70,27 +86,40 @@ ylow = 1.1
 yhigh = 2.3
 
 
-fig = plt.figure(figsize=(24, 5), facecolor="white", constrained_layout=True)
-ax1 = fig.add_subplot(141, frameon=False)
-ax2 = fig.add_subplot(142, frameon=False)
-ax3 = fig.add_subplot(143, frameon=False)
-ax4 = fig.add_subplot(144, frameon=False)
+# fig = plt.figure(figsize=(24, 5), facecolor="white", constrained_layout=True)
+# ax1 = fig.add_subplot(141, frameon=False)
+# ax2 = fig.add_subplot(142, frameon=False)
+# ax3 = fig.add_subplot(143, frameon=False)
+# ax4 = fig.add_subplot(144, frameon=False)
 # ax5 = fig.add_subplot(235, frameon=False)
 # ax6 = fig.add_subplot(236, frameon=False)
 
-ax1.scatter(
+fig, ax = plt.subplots(
+    1,
+    4,
+    figsize=(23, 5),
+    # gridspec_kw={"width_ratios": [1, 1, 1, 1]},
+)
+
+# plt.sca(ax1)
+plt.sca(ax[0])
+plt.xticks([])
+plt.yticks([])
+
+plt.scatter(
     data.obsm["spatial"][:, 0],
     data.obsm["spatial"][:, 1],
     # marker="s",
     c=data.obs["total_counts"].values,
     # c=np.array(data[:, GENE_NAME].X.todense()).squeeze(),
-    s=1.5,
+    s=5,
     alpha=0.5,
     # vmin=data.obs["total_counts"].values.min(),
     # vmax=data.obs["total_counts"].values.max(),
+    cmap="coolwarm",
 )
-ax1.set_title("Unaligned")
-ax1.invert_yaxis()
+plt.title("Unaligned")
+plt.gca().invert_yaxis()
 
 
 rect = patches.Rectangle(
@@ -98,34 +127,39 @@ rect = patches.Rectangle(
     xhigh - xlow,
     yhigh - ylow,
     linewidth=2,
-    edgecolor="r",
+    edgecolor="lime",
     facecolor="none",
 )
-ax1.add_patch(rect)
+plt.gca().add_patch(rect)
 
-ax2.scatter(
+plt.sca(ax[1])
+plt.xticks([])
+plt.yticks([])
+
+plt.scatter(
     data_aligned.obsm["spatial"][:, 0],
     data_aligned.obsm["spatial"][:, 1],
     # marker="s",
     c=data_aligned.obs["total_counts"].values,
     # c=np.array(data_aligned[:, GENE_NAME].X.todense()).squeeze(),
-    s=1.5,
+    s=5,
     alpha=0.5,
     # vmin=data_aligned.obs["total_counts"].values.min(),
     # vmax=data_aligned.obs["total_counts"].values.max(),
+    cmap="coolwarm",
 )
-ax2.set_title("Aligned")
-ax2.invert_yaxis()
+plt.gca().set_title("Aligned")
+plt.gca().invert_yaxis()
 
 rect = patches.Rectangle(
     (xlow, ylow),
     xhigh - xlow,
     yhigh - ylow,
     linewidth=2,
-    edgecolor="r",
+    edgecolor="lime",
     facecolor="none",
 )
-ax2.add_patch(rect)
+plt.gca().add_patch(rect)
 
 
 data_view1 = data[data.obs["batch"] == "0"]
@@ -146,34 +180,40 @@ data_view2 = data_view2[
 ]
 
 
-ax3.scatter(
+plt.sca(ax[2])
+plt.xticks([])
+plt.yticks([])
+
+plt.scatter(
     data_view1.obsm["spatial"][:, 0],
     data_view1.obsm["spatial"][:, 1],
     marker="s",
     c=data_view1.obs["total_counts"].values,
     # c=np.array(data_view1[:, GENE_NAME].X.todense()).squeeze(),
-    s=100,
+    s=200,
     alpha=0.8,
     # vmin=data.obs["total_counts"].values.min(),
     # vmax=data.obs["total_counts"].values.max(),
     label="Slice 1",
+    cmap="coolwarm",
 )
-ax3.scatter(
+plt.scatter(
     data_view2.obsm["spatial"][:, 0],
     data_view2.obsm["spatial"][:, 1],
     marker="o",
     c=data_view2.obs["total_counts"].values,
     # c=np.array(data_view2[:, GENE_NAME].X.todense()).squeeze(),
-    s=100,
+    s=200,
     alpha=0.8,
     # vmin=data.obs["total_counts"].values.min(),
     # vmax=data.obs["total_counts"].values.max(),
     label="Slice 2",
-    edgecolors="black",
+    # edgecolors="black",
     linewidth=2,
+    cmap="coolwarm",
 )
-ax3.invert_yaxis()
-ax3.set_title("Unaligned")
+plt.gca().invert_yaxis()
+plt.gca().set_title("Unaligned")
 
 
 data_aligned_view1 = data_aligned[data_aligned.obs["batch"] == "0"]
@@ -194,34 +234,40 @@ data_aligned_view2 = data_aligned_view2[
 ]
 
 
-ax4.scatter(
+plt.sca(ax[3])
+plt.xticks([])
+plt.yticks([])
+
+plt.scatter(
     data_aligned_view1.obsm["spatial"][:, 0],
     data_aligned_view1.obsm["spatial"][:, 1],
     marker="s",
     c=data_aligned_view1.obs["total_counts"].values,
     # c=np.array(data_aligned_view1[:, GENE_NAME].X.todense()).squeeze(),
-    s=100,
+    s=200,
     alpha=0.8,
     # vmin=data.obs["total_counts"].values.min(),
     # vmax=data.obs["total_counts"].values.max(),
     label="Slice 1",
+    cmap="coolwarm",
 )
-ax4.scatter(
+plt.scatter(
     data_aligned_view2.obsm["spatial"][:, 0],
     data_aligned_view2.obsm["spatial"][:, 1],
     marker="o",
     c=data_aligned_view2.obs["total_counts"].values,
     # c=np.array(data_aligned_view2[:, GENE_NAME].X.todense()).squeeze(),
-    s=100,
+    s=200,
     alpha=0.8,
     # vmin=data.obs["total_counts"].values.min(),
     # vmax=data.obs["total_counts"].values.max(),
     label="Slice 2",
-    edgecolors="black",
+    # edgecolors="black",
     linewidth=2,
+    cmap="coolwarm",
 )
-ax4.invert_yaxis()
-ax4.set_title("Aligned")
+plt.gca().invert_yaxis()
+plt.gca().set_title("Aligned")
 
 
 plt.legend(loc="center left", bbox_to_anchor=(1, 0.5))
@@ -229,10 +275,10 @@ plt.legend(loc="center left", bbox_to_anchor=(1, 0.5))
 plt.tight_layout()
 
 plt.savefig("./out/visium_alignment_example.png")
-ax1.set_facecolor("lightgray")
-ax2.set_facecolor("lightgray")
-ax3.set_facecolor("lightgray")
-ax4.set_facecolor("lightgray")
+# ax1.set_facecolor("lightgray")
+# ax2.set_facecolor("lightgray")
+# ax3.set_facecolor("lightgray")
+# ax4.set_facecolor("lightgray")
 plt.show()
 
 # import ipdb

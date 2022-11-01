@@ -24,22 +24,25 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 spatial_variance_errors_df = pd.read_csv("./out/error_experiment_parameter_range_spatial_variance.csv", index_col=0)
 lengthscale_errors_df = pd.read_csv("./out/error_experiment_parameter_range_lengthscale.csv", index_col=0)
 
-keep_idx = np.delete(np.arange(len(spatial_variance_errors_df)), 18)
-spatial_variance_errors_df = spatial_variance_errors_df.iloc[keep_idx]
-lengthscale_errors_df = lengthscale_errors_df.iloc[keep_idx]
+# keep_idx = np.delete(np.arange(len(spatial_variance_errors_df)), 18)
+# spatial_variance_errors_df = spatial_variance_errors_df.iloc[keep_idx]
+# lengthscale_errors_df = lengthscale_errors_df.iloc[keep_idx]
 
 plt.figure(figsize=(17, 6))
+
+spatial_variance_errors_df = spatial_variance_errors_df[spatial_variance_errors_df.value < 1]
 
 ## Spatial variance
 plt.subplot(121)
 plt.title("Spatial variance")
-sns.lineplot(data=spatial_variance_errors_df, x="variable", y="value")
+# sns.lineplot(data=spatial_variance_errors_df, x="variable", y="value")
+sns.lineplot(data=spatial_variance_errors_df, x="variable", y="value", ci="sd")
 true_spatial_variance = np.median(spatial_variance_errors_df.variable.unique())
 # plt.axvline(true_spatial_variance, color="black", linestyle="--")
-plt.axvline(0.1, color="black", linestyle="--")
+plt.axvline(true_spatial_variance, color="black", linestyle="--")
 plt.xlabel(r"$\sigma^2$")
 plt.ylabel("Error")
-
+# plt.show()
 
 ## Length scale
 plt.subplot(122)
