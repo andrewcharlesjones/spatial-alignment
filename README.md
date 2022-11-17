@@ -1,6 +1,7 @@
 # Gaussian process spatial alignment (GPSA)
 ![Build Status](https://github.com/andrewcharlesjones/spatial-alignment/actions/workflows/main.yml/badge.svg)
 [![PyPI](https://img.shields.io/pypi/v/gpsa.svg?logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/gpsa/)
+[![DOI](https://zenodo.org/badge/375463436.svg)](https://zenodo.org/badge/latestdoi/375463436)
 
 This repository contains the code for our paper, [Alignment of spatial genomics and histology data using deep Gaussian processes](https://www.biorxiv.org/content/10.1101/2022.01.10.475692v1).
 
