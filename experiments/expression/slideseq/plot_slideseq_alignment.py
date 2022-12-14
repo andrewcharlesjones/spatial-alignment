@@ -18,6 +18,7 @@ matplotlib.rcParams["text.usetex"] = True
 matplotlib.rcParams["xtick.labelsize"] = 10
 matplotlib.rcParams["ytick.labelsize"] = 10
 landmark_markersize = 200
+pointsize = 3
 
 aligned_coords = pd.read_csv("./out/aligned_coords_slideseq.csv", index_col=0).values
 view_idx = pd.read_csv("./out/view_idx_slideseq.csv", index_col=0).values
@@ -90,7 +91,7 @@ for vv in range(len(data.obs.batch.unique())):
     plt.scatter(
         X[view_idx[vv], 0],
         X[view_idx[vv], 1],
-        s=1,
+        s=pointsize,
         label="Slice {}".format(vv + 1),
         color=colors[vv],
         alpha=0.5,
@@ -129,7 +130,7 @@ for vv in range(len(data.obs.batch.unique())):
     plt.scatter(
         aligned_coords[view_idx[vv], 0],
         aligned_coords[view_idx[vv], 1],
-        s=1,
+        s=pointsize,
         color=colors[vv],
         alpha=0.5,
     )
@@ -207,7 +208,7 @@ for ii, gg in enumerate(gene_idx):
             X[view_idx[vv], 0],
             X[view_idx[vv], 1],
             c=Y[view_idx[vv]][:, gg],
-            s=1,
+            s=pointsize,
         )
     # plt.title(r"$\emph{" + data.var.gene_ids.values[gg].upper() + "}$")
     plt.title(r"$\emph{" + gene_names[ii].upper() + "}$")
@@ -221,7 +222,7 @@ for ii, gg in enumerate(gene_idx):
             aligned_coords[view_idx[vv], 0],
             aligned_coords[view_idx[vv], 1],
             c=Y[view_idx[vv]][:, gg],
-            s=1,
+            s=pointsize,
         )
     # plt.title(r"$\emph{" + data.var.gene_ids.values[gg] + "}$")
     plt.axis("off")

@@ -78,7 +78,6 @@ data_slice2 = process_data(data_slice2, n_top_genes=6000)
 
 data = data_slice1.concatenate(data_slice2)
 
-
 # shared_gene_names = data.var.gene_ids.index.values
 # data_knn = data_slice1[:, shared_gene_names]
 # X_knn = data_knn.obsm["spatial"]

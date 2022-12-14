@@ -107,7 +107,6 @@ data_slice2 = anndata.AnnData(
 data_slice2.obsm["spatial"] = spatial_locs_slice2.values
 data_slice2 = process_data(data_slice2, n_top_genes=3000)
 
-
 ## Remove outlier points outside of puck
 MAX_NEIGHBOR_DIST = 700
 knn = NearestNeighbors(n_neighbors=10).fit(data_slice1.obsm["spatial"])

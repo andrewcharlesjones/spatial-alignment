@@ -81,7 +81,6 @@ def process_data(adata, n_top_genes=2000):
 data_slice1 = load_st_data(layers=np.arange(N_LAYERS) + 1)[0]
 process_data(data_slice1, n_top_genes=3000)
 
-
 sq.gr.spatial_neighbors(data_slice1)
 sq.gr.spatial_autocorr(
     data_slice1,

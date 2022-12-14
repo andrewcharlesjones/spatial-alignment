@@ -12,6 +12,7 @@ import seaborn as sns
 
 SCATTER_POINT_SIZE = 50
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 def callback_oned(
     model,
@@ -72,8 +73,8 @@ def callback_oned(
                 c="orange",
             )
         latent_expression_ax.scatter(
-            # model.G_means["expression"].detach().numpy()[view_idx[vv], 0],
-            X_aligned["expression"].detach().numpy()[view_idx[vv], 0],
+            # model.G_means["expression"].detach().cpu().numpy()[view_idx[vv], 0],
+            X_aligned["expression"].detach().cpu().numpy()[view_idx[vv], 0],
             Y[view_idx[vv], 0],
             c="blue",
             label="View {}".format(vv + 1),
@@ -82,8 +83,8 @@ def callback_oned(
         )
         if Y.shape[1] > 1:
             latent_expression_ax.scatter(
-                # model.G_means["expression"].detach().numpy()[view_idx[vv], 0],
-                X_aligned["expression"].detach().numpy()[view_idx[vv], 0],
+                # model.G_means["expression"].detach().cpu().numpy()[view_idx[vv], 0],
+                X_aligned["expression"].detach().cpu().numpy()[view_idx[vv], 0],
                 Y[view_idx[vv], 1],
                 c="orange",
                 label="View {}".format(vv + 1),
@@ -91,8 +92,8 @@ def callback_oned(
                 s=SCATTER_POINT_SIZE,
             )
         # latent_expression_ax.scatter(
-        # 	model.Xtilde.detach().numpy()[vv, :, 0],
-        # 	model.delta_list.detach().numpy()[vv][:, 0],
+        # 	model.Xtilde.detach().cpu().numpy()[vv, :, 0],
+        # 	model.delta_list.detach().cpu().numpy()[vv][:, 0],
         # 	c="red",
         # 	label="View {}".format(vv + 1),
         # 	marker="^",
@@ -101,16 +102,16 @@ def callback_oned(
 
         if F_samples is not None:
             latent_expression_ax.scatter(
-                X_aligned["expression"].detach().numpy()[view_idx[vv], 0],
-                F_samples.detach().numpy()[view_idx[vv], 0],
+                X_aligned["expression"].detach().cpu().numpy()[view_idx[vv], 0],
+                F_samples.detach().cpu().numpy()[view_idx[vv], 0],
                 c="red",
                 marker=markers[vv],
                 s=SCATTER_POINT_SIZE,
             )
             if Y.shape[1] > 1:
                 latent_expression_ax.scatter(
-                    X_aligned["expression"].detach().numpy()[view_idx[vv], 0],
-                    F_samples.detach().numpy()[view_idx[vv], 1],
+                    X_aligned["expression"].detach().cpu().numpy()[view_idx[vv], 0],
+                    F_samples.detach().cpu().numpy()[view_idx[vv], 1],
                     c="green",
                     marker=markers[vv],
                     s=SCATTER_POINT_SIZE,
@@ -126,31 +127,31 @@ def callback_oned(
         ### Plots the warping function
         # prediction_ax.scatter(
         # 	X[view_idx[vv], 0],
-        # 	X_aligned["expression"].detach().numpy()[view_idx[vv], 0],
+        # 	X_aligned["expression"].detach().cpu().numpy()[view_idx[vv], 0],
         # 	label="View {}".format(vv + 1),
         # 	marker=markers[vv],
         # 	s=100,
         # 	c="blue",
         # )
         # prediction_ax.scatter(
-        # 	model.Xtilde.detach().numpy()[vv, :, 0],
-        # 	model.delta_list.detach().numpy()[vv][:, 0],
+        # 	model.Xtilde.detach().cpu().numpy()[vv, :, 0],
+        # 	model.delta_list.detach().cpu().numpy()[vv][:, 0],
         # 	c="red",
         # 	label="View {}".format(vv + 1),
         # 	marker="^",
         # 	s=100,
         # )
         latent_expression_ax.scatter(
-            X_test_aligned["expression"].detach().numpy()[:, 0],
-            Y_pred.detach().numpy()[:, 0],
+            X_test_aligned["expression"].detach().cpu().numpy()[:, 0],
+            Y_pred.detach().cpu().numpy()[:, 0],
             c="blue",
             label="Prediction",
             marker="^",
             s=SCATTER_POINT_SIZE,
         )
         latent_expression_ax.scatter(
-            X_test_aligned["expression"].detach().numpy()[:, 0],
-            Y_pred.detach().numpy()[:, 1],
+            X_test_aligned["expression"].detach().cpu().numpy()[:, 0],
+            Y_pred.detach().cpu().numpy()[:, 1],
             c="orange",
             label="Prediction",
             marker="^",
@@ -158,13 +159,13 @@ def callback_oned(
         )
         prediction_ax.scatter(
             Y_test_true[:, 0],
-            Y_pred.detach().numpy()[:, 0],
+            Y_pred.detach().cpu().numpy()[:, 0],
             c="black",
             s=SCATTER_POINT_SIZE,
         )
         prediction_ax.scatter(
             Y_test_true[:, 1],
-            Y_pred.detach().numpy()[:, 1],
+            Y_pred.detach().cpu().numpy()[:, 1],
             c="black",
             s=SCATTER_POINT_SIZE,
             marker="^",
@@ -194,7 +195,7 @@ def callback_twod(
         else:
             curr_idx = model.view_idx["expression"][model.fixed_view_idx]
             X_aligned["expression"][curr_idx] = torch.tensor(
-                X[curr_idx].astype(np.float32)
+                X[curr_idx].astype(np.float32), device=device
             )
 
     model.eval()
@@ -220,7 +221,7 @@ def callback_twod(
         Xs.append(X[curr_view_idx[vv]])
 
         ## Latents
-        curr_latent_Xs = X_aligned["expression"].detach().numpy()[curr_view_idx[vv]]
+        curr_latent_Xs = X_aligned["expression"].detach().cpu().numpy()[curr_view_idx[vv]]
         latent_Xs.append(curr_latent_Xs)
         Ys.append(Y[curr_view_idx[vv], gene_idx])
         markers_list.append([markers[vv]] * curr_latent_Xs.shape[0])
@@ -271,9 +272,9 @@ def callback_twod(
         g.legend_.remove()
     # plt.colorbar()
     # plt.axis("off")
-    # plt.scatter(model.Xtilde.detach().numpy()[0, :, 0], model.Xtilde.detach().numpy()[0, :, 1], color="red")
-    # plt.scatter(model.Xtilde.detach().numpy()[1, :, 0], model.Xtilde.detach().numpy()[1, :, 1], color="red")
-    # plt.scatter(model.Gtilde.detach().numpy()[:, 0], model.Gtilde.detach().numpy()[:, 1], color="red")
+    # plt.scatter(model.Xtilde.detach().cpu().numpy()[0, :, 0], model.Xtilde.detach().cpu().numpy()[0, :, 1], color="red")
+    # plt.scatter(model.Xtilde.detach().cpu().numpy()[1, :, 0], model.Xtilde.detach().cpu().numpy()[1, :, 1], color="red")
+    # plt.scatter(model.Gtilde.detach().cpu().numpy()[:, 0], model.Gtilde.detach().cpu().numpy()[:, 1], color="red")
     # plt.axis("off")
 
     plt.sca(latent_expression_ax)
@@ -307,8 +308,8 @@ def callback_twod(
     #         s=400,
     #     )
     # latent_expression_ax.scatter(
-    #     X_aligned["expression"].detach().numpy()[curr_view_idx[vv], 0],
-    #     X_aligned["expression"].detach().numpy()[curr_view_idx[vv], 1],
+    #     X_aligned["expression"].detach().cpu().numpy()[curr_view_idx[vv], 0],
+    #     X_aligned["expression"].detach().cpu().numpy()[curr_view_idx[vv], 1],
     #     c=Y[curr_view_idx[vv], 0],
     #     label="View {}".format(vv + 1),
     #     marker=markers[vv],
@@ -354,7 +355,7 @@ def callback_twod_aligned_only(
     markers_list = []
     viewname_list = []
 
-    aligned_coords = X_aligned["expression"].detach().numpy()
+    aligned_coords = X_aligned["expression"].detach().cpu().numpy()
 
     for vv in range(model.n_views):
 
@@ -382,8 +383,8 @@ def callback_twod_aligned_only(
         s=24,
         marker="h",
     )
-    # latent_expression_ax1.scatter(model.Xtilde.detach().numpy()[0, :, 0], model.Xtilde.detach().numpy()[0, :, 1], color="red")
-    # latent_expression_ax2.scatter(model.Xtilde.detach().numpy()[1, :, 0], model.Xtilde.detach().numpy()[1, :, 1], color="red")
+    # latent_expression_ax1.scatter(model.Xtilde.detach().cpu().numpy()[0, :, 0], model.Xtilde.detach().cpu().numpy()[0, :, 1], color="red")
+    # latent_expression_ax2.scatter(model.Xtilde.detach().cpu().numpy()[1, :, 0], model.Xtilde.detach().cpu().numpy()[1, :, 1], color="red")
 
     plt.axis("off")
 
@@ -432,8 +433,8 @@ def callback_twod_multimodal(
                 s=scatterpoint_size,
             )
             axes[axis_counter + 1].scatter(
-                X_aligned[mod].detach().numpy()[curr_view_idx[vv], 0],
-                X_aligned[mod].detach().numpy()[curr_view_idx[vv], 1],
+                X_aligned[mod].detach().cpu().numpy()[curr_view_idx[vv], 0],
+                X_aligned[mod].detach().cpu().numpy()[curr_view_idx[vv], 1],
                 c=curr_outputs,
                 label="View {}".format(vv + 1),
                 marker=markers[vv],
